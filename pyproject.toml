@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "netbox-proxbox"
+name = "netbox-proxbox-testing"
 version = "0.0.3"
 description = "Netbox Plugin - Integrate Proxmox and Netbox"
-authors = ["Emerson Felipe <emerson.felipe@nmultifibra.com>"]
+authors = ["Sebastian Winkelmann"]
 license = "Apache-2.0"
 packages = [
-    { include = "netbox_proxbox" }
+    { include = "netbox_proxbox_testing" }
 ]
 
 [tool.poetry.dependencies]
