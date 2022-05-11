@@ -14,7 +14,7 @@ urlpatterns = [
     path('nodes/', views.NodesListView.as_view(), name='nodes'),
     path('resource-pool/', views.ResourcePoolListView.as_view(), name='resource_pool'),
     path('virtual-machine/', views.VirtualMachineListView.as_view(), name='virtual_machine'),
-    path('virtual-machine/', views.StorageListView.as_view(), name='storage'),
+    path('storage/', views.StorageListView.as_view(), name='storage'),
 
     # Base Views
     path("list/", views.ProxmoxVMListView.as_view(), name="proxmoxvm_list"),
