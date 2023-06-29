@@ -6,6 +6,22 @@ menu_items = (
         link="plugins:netbox_proxbox:home",
         link_text="Home",
     ),
+    PluginMenuItem(
+        link="plugins:netbox_proxbox:nodes",
+        link_text="Nodes",
+    ),
+    PluginMenuItem(
+        link="plugins:netbox_proxbox:lxc",
+        link_text="LXC Container",
+    ),
+    PluginMenuItem(
+        link="plugins:netbox_proxbox:virtual_machine",
+        link_text="Virtual Machine",
+    ),
+    PluginMenuItem(
+        link="plugins:netbox_proxbox:storage",
+        link_text="Storage",
+    ),
 )
 
 '''

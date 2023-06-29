@@ -83,6 +83,70 @@ def table_data():
 '''
 
 
+class LxcListView(View):
+    """LXC Container's List"""
+    template_name = 'netbox_proxbox/home.html'
+
+    # service incoming GET HTTP requests
+    def get(self, request):
+        """Get request."""
+        return render(
+            request,
+            self.template_name,
+        )
+
+
+class NodesListView(View):
+    """Nodes' List"""
+    template_name = 'netbox_proxbox/home.html'
+
+    # service incoming GET HTTP requests
+    def get(self, request):
+        """Get request."""
+        return render(
+            request,
+            self.template_name,
+        )
+
+
+class ResourcePoolListView(View):
+    """Resource Pool's List"""
+    template_name = 'netbox_proxbox/home.html'
+
+    # service incoming GET HTTP requests
+    def get(self, request):
+        """Get request."""
+        return render(
+            request,
+            self.template_name,
+        )
+
+
+class VirtualMachineListView(View):
+    """Virtual Machine's List"""
+    template_name = 'netbox_proxbox/home.html'
+
+    # service incoming GET HTTP requests
+    def get(self, request):
+        """Get request."""
+        return render(
+            request,
+            self.template_name,
+        )
+
+
+class StorageListView(View):
+    """Storage's List"""
+    template_name = 'netbox_proxbox/home.html'
+
+    # service incoming GET HTTP requests
+    def get(self, request):
+        """Get request."""
+        return render(
+            request,
+            self.template_name,
+        )
+
 class ProxmoxFullUpdate(PermissionRequiredMixin, View):
     """Full Update of Proxmox information on Netbox."""
 
