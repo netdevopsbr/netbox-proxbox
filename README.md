@@ -1,14 +1,14 @@
 > Although **Proxbox is under constant development**, I do it with **best effort** and **spare time**. I have no financial gain with this and hope you guys understand, as I know it is pretty useful to some people. If you want to **speed up its development**, solve the problem or create new features with your own code and create a **[Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests)** so that I can **review** it. **I also would like to appreciate the people who already contributed with code or/and bug reports.** Without this help, surely Proxbox would be much less useful as it is already today to several environments!
 
 <div align="center">
-	<a href="http://proxbox.netbox.dev.br/">
+	<a href="https://docs.netbox.dev.br/en/netbox/plugins/netbox-proxbox">
 		<img width="532" src="https://github.com/N-Multifibra/proxbox/blob/main/etc/img/proxbox-full-logo.png" alt="Proxbox logo">
 	</a>
 	<br>
 	
 <div>
 	
-### [New Documentation available!](http://proxbox.netbox.dev.br/)
+### [New Documentation available!](https://docs.netbox.dev.br/en/netbox/plugins/netbox-proxbox)
 </div>
 <br>
 </div>
@@ -152,49 +152,36 @@ Replace the values with your own following the [Configuration Parameters](#2-con
 
 ```python
 PLUGINS_CONFIG = {
-  'netbox_proxbox': [
-    {
-      'proxmox': {
-        'domain': 'proxbox.example.com',    # May also be IP address
-        'http_port': 8006,
-        'user': 'root@pam',   # always required
-        'password': 'Strong@P4ssword', # only required, if you don't want to use token based authentication
-        'token': {
-          'name': 'tokenID',	# Only type the token name and not the 'user@pam:tokenID' format
-          'value': '039az154-23b2-4be0-8d20-b66abc8c4686'
-        },
-        'ssl': False
-       },
-       {
-        'domain': 'proxbox2.example.com',    # May also be IP address
-        'http_port': 8006,
-        'user': 'root@pam',   # always required
-        'password': 'Strong@P4ssword', # only required, if you don't want to use token based authentication
-        'token': {
-          'name': 'tokenID',	# Only type the token name and not the 'user@pam:tokenID' format
-          'value': '039ab154-23b2-4be0-8d40-b66abc8c4668'
-        },
-        'ssl': False
-       }
-      ]
-      'netbox': {
-        'domain': 'localhost',     # Ensure localhost is added to ALLOWED_HOSTS
-        'http_port': 8001,     # Gunicorn port.
-        'token': '0dd7cddfaee3b38bbffbd2937d44c4a03f9c9d38',
-        'ssl': False,	# There is no support to SSL on Netbox yet, so let it always False.
-        'settings': {
-          'virtualmachine_role_id' : 0,
-          'node_role_id' : 0,
-          'site_id': 0
-        }
+  'netbox_proxbox': {
+    'proxmox': {
+      'domain': 'proxbox.example.com',    # May also be IP address
+      'http_port': 8006,
+      'user': 'root@pam',   # always required
+      'password': 'Strong@P4ssword', # only required, if you don't want to use token based authentication
+      'token': {
+        'name': 'tokenID',	# Only type the token name and not the 'user@pam:tokenID' format
+        'value': '039az154-23b2-4be0-8d20-b66abc8c4686'
       },
-      'fastapi': {
-        'uvicorn_host' : '0.0.0.0', 
-        'uvicorn_port' : '8002',
+      'ssl': False
+    },
+    'netbox': {
+      'domain': 'localhost',     # Ensure localhost is added to ALLOWED_HOSTS
+      'http_port': 8001,     # Gunicorn port.
+      'token': '0dd7cddfaee3b38bbffbd2937d44c4a03f9c9d38',
+      'ssl': False,	# There is no support to SSL on Netbox yet, so let it always False.
+      'settings': {
+        'virtualmachine_role_id' : 0,
+        'node_role_id' : 0,
+        'site_id': 0
       }
+    },
+    'fastapi': {
+      'uvicorn_host' : '0.0.0.0', 
+      'uvicorn_port' : '8002',
     }
- }
-
+  }
+}
+```
 
 <br>
 
@@ -377,9 +364,3 @@ Below some of the communities available:
 - **[Official - Slack Community (english)](https://netdev.chat/)**
 - **[Community Discord Channel - 🇧🇷 (pt-br)](https://discord.gg/X6FudvXW)**
 - **[Community Telegram Chat - 🇧🇷 (pt-br)](https://t.me/netboxbr)**
-
----
-
-## Stars History 📈
-
-[![Star History Chart](https://api.star-history.com/svg?repos=netdevopsbr/netbox-proxbox&type=Timeline)](https://star-history.com/#netdevopsbr/netbox-proxbox&Timeline)
