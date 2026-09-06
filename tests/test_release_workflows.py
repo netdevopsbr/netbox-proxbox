@@ -1853,14 +1853,22 @@ def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
     control_checkout = _step(publish, "Checkout canonical publisher control")
     candidate_checkout = _step(publish, "Checkout candidate tag as passive build input")
     bind_candidate = _step(publish, "Bind candidate tag to validated objects")["run"]
-    assert control_checkout["with"] == {
-        "ref": "${{ github.sha }}",
-        "persist-credentials": False,
-    }
-    assert candidate_checkout["with"]["path"] == "candidate"
-    assert candidate_checkout["with"]["ref"] == (
-        "${{ needs.validate-version.outputs.source_sha }}"
+    assert "uses" not in control_checkout
+    assert control_checkout["env"]["CONTROL_SHA"] == "${{ github.sha }}"
+    assert "refs/heads/main:refs/release-policy/control-main" in control_checkout["run"]
+    assert (
+        'test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"'
+        in control_checkout["run"]
     )
+    assert "uses" not in candidate_checkout
+    assert (
+        "refs/tags/${TAG}:refs/release-policy/candidate-tag-initial"
+        in (candidate_checkout["run"])
+    )
+    assert "${EXPECTED_TAG_OBJECT}" in candidate_checkout["run"]
+    assert "${EXPECTED_SOURCE_SHA}" in candidate_checkout["run"]
+    assert "persist-credentials" not in control_checkout
+    assert "persist-credentials" not in candidate_checkout
     assert "refs/release-policy/candidate-tag" in bind_candidate
     assert "${EXPECTED_TAG_OBJECT}" in bind_candidate
     assert "${EXPECTED_SOURCE_SHA}" in bind_candidate

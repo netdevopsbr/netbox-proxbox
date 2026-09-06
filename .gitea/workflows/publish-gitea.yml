@@ -111,19 +111,43 @@ jobs:
       RESUME_EXISTING: ${{ needs.validate-version.outputs.resume_existing }}
     steps:
       - name: Checkout canonical publisher control
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
+        env:
+          CONTROL_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"
+          test "${GITHUB_REPOSITORY}" = "emersonfelipesp/netbox-proxbox"
+          printf '%s' "${CONTROL_SHA}" | grep -Eq '^[a-f0-9]{40}$'
+          test -z "$(find . -mindepth 1 -maxdepth 1 -print -quit)"
+          git init .
+          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 --no-tags origin \
+            "+refs/heads/main:refs/release-policy/control-main"
+          test "$(git rev-parse refs/release-policy/control-main^{commit})" = \
+            "${CONTROL_SHA}"
+          git checkout --detach --force refs/release-policy/control-main
+          test -z "$(git status --porcelain --untracked-files=all)"
 
       - name: Checkout candidate tag as passive build input
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ needs.validate-version.outputs.source_sha }}
-          path: candidate
-          fetch-depth: 0
-          fetch-tags: true
-          persist-credentials: false
+        run: |
+          set -euo pipefail
+          test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"
+          test "${GITHUB_REPOSITORY}" = "emersonfelipesp/netbox-proxbox"
+          printf '%s' "${EXPECTED_TAG_OBJECT}" | grep -Eq '^[a-f0-9]{40}$'
+          printf '%s' "${EXPECTED_SOURCE_SHA}" | grep -Eq '^[a-f0-9]{40}$'
+          test ! -e candidate
+          mkdir -m 0700 candidate
+          git -C candidate init .
+          git -C candidate remote add origin \
+            "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git -C candidate fetch --depth=1 --no-tags origin \
+            "+refs/tags/${TAG}:refs/release-policy/candidate-tag-initial"
+          test "$(git -C candidate rev-parse refs/release-policy/candidate-tag-initial)" = \
+            "${EXPECTED_TAG_OBJECT}"
+          test "$(git -C candidate rev-parse refs/release-policy/candidate-tag-initial^{commit})" = \
+            "${EXPECTED_SOURCE_SHA}"
+          git -C candidate checkout --detach --force "${EXPECTED_SOURCE_SHA}"
+          test -z "$(git -C candidate status --porcelain --untracked-files=all)"
 
       - name: Bind candidate tag to validated objects
         run: |
