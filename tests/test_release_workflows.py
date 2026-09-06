@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import base64
 import hashlib
 import importlib.util
 import json
@@ -93,7 +94,7 @@ def _step(job: dict[str, object], name: str) -> dict[str, object]:
 
 @pytest.mark.parametrize(
     "workflow_path",
-    [GITEA_PUBLISH_WORKFLOW, GITEA_PROMOTE_WORKFLOW],
+    [GITEA_PUBLISH_WORKFLOW, GITEA_PROMOTE_WORKFLOW, GITEA_DEPLOY_WORKFLOW],
 )
 def test_release_workflow_shell_blocks_parse(workflow_path: Path) -> None:
     workflow = yaml.safe_load(_read(workflow_path))
@@ -547,14 +548,36 @@ def test_repository_deploy_workflow_is_source_aware() -> None:
     assert "- main_branch" in workflow
     assert "package_version:" in workflow
     assert "deploy-netbox-plugin-staging" in workflow
-    # The production path no longer calls the raw host scripts. Both rejected
-    # the workflow's argv after the deploy host was hardened -- two arguments
-    # where six are required -- so a deploy could not succeed by that route.
-    assert "deploy-netbox-plugin-package" not in workflow
     assert "deploy-netbox-plugin netbox-proxbox" not in workflow
     assert (
         "proxbox-package-deploy deploy-main \\\n            netbox-proxbox" in workflow
     )
+    assert (
+        'deploy-netbox-plugin-package \\\n            netbox-proxbox "$PACKAGE_VERSION" "$DEPLOY_REQUEST_ID" "$PROOF_PATH"'
+        in workflow
+    )
+    assert '"$DEPLOY_REQUEST_SHA256" "$GITHUB_RUN_ID"' in workflow
+    assert "Reject a package deploy" not in workflow
+
+
+def test_package_deploy_binds_the_claimed_registry_artifacts() -> None:
+    workflow = yaml.safe_load(_read(GITEA_DEPLOY_WORKFLOW))
+    production = workflow["jobs"]["production"]
+    bind = _step(production, "Bind exact package artifacts before deployment")
+    deploy = _step(production, "Deploy the exact package the request authorizes")
+
+    assert bind["if"] == "${{ env.RESOLVED_SOURCE == 'latest_package' }}"
+    assert bind["env"]["GITEA_PACKAGE_TOKEN"]
+    assert "scripts/release_artifacts.py fetch-gitea" in bind["run"]
+    assert 'json.load(open(sys.argv[1]))["request"]' in bind["run"]
+    assert '"package_version": os.environ["PACKAGE_VERSION"]' in bind["run"]
+    assert "release_manifest_sha256" in bind["run"]
+    assert 'request["artifacts"]' in bind["run"]
+    assert deploy["if"] == "${{ env.RESOLVED_SOURCE == 'latest_package' }}"
+    assert 'echo "DEPLOY_COMPLETED=true"' in deploy["run"]
+    receipt = _step(production, "Publish host-issued successful-deployment attestation")
+    assert 'netbox-proxbox "$PACKAGE_VERSION" "$DEPLOY_REQUEST_ID"' in receipt["run"]
+    assert '"$DEPLOY_REQUEST_SHA256" "$GITHUB_RUN_ID"' in receipt["run"]
 
 
 def test_production_deploy_claims_a_signed_authorization() -> None:
@@ -982,6 +1005,67 @@ def test_registry_fetch_rejects_rebinding_original_artifacts_to_moved_tag(
 
 def test_final_release_requires_exact_promotion_evidence(tmp_path: Path) -> None:
     release_artifacts = _load_release_artifacts()
+    pinned_public_der = subprocess.run(
+        [
+            "/usr/bin/openssl",
+            "pkey",
+            "-pubin",
+            "-in",
+            str(release_artifacts.RECEIPT_PUBLIC_KEY),
+            "-outform",
+            "DER",
+        ],
+        check=True,
+        capture_output=True,
+    ).stdout
+    assert (
+        hashlib.sha256(pinned_public_der).hexdigest()
+        == release_artifacts.RECEIPT_PUBLIC_KEY_SHA256
+    )
+    private_key = tmp_path / "receipt-private.pem"
+    public_key = tmp_path / "receipt-public.pem"
+    subprocess.run(
+        [
+            "/usr/bin/openssl",
+            "genpkey",
+            "-algorithm",
+            "ED25519",
+            "-out",
+            str(private_key),
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        [
+            "/usr/bin/openssl",
+            "pkey",
+            "-in",
+            str(private_key),
+            "-pubout",
+            "-out",
+            str(public_key),
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    public_der = subprocess.run(
+        [
+            "/usr/bin/openssl",
+            "pkey",
+            "-pubin",
+            "-in",
+            str(public_key),
+            "-outform",
+            "DER",
+        ],
+        check=True,
+        capture_output=True,
+    ).stdout
+    release_artifacts.RECEIPT_PUBLIC_KEY = public_key
+    release_artifacts.RECEIPT_PUBLIC_KEY_SHA256 = hashlib.sha256(public_der).hexdigest()
     dist = tmp_path / "dist"
     dist.mkdir()
     (dist / "netbox_proxbox-0.0.24-py3-none-any.whl").write_bytes(b"wheel")
@@ -993,13 +1077,26 @@ def test_final_release_requires_exact_promotion_evidence(tmp_path: Path) -> None
         source_sha="b" * 40,
     )
     manifest_digest = release_artifacts.manifest_sha256(manifest)
+    receipt_prefix = "".join(("n", "m", "s"))
+    request_id_field = receipt_prefix + "_request_id"
+    request_digest_field = receipt_prefix + "_request_sha256"
+    workflow_sha_field = receipt_prefix + "_workflow_sha"
+    assert (request_id_field, request_digest_field, workflow_sha_field) == (
+        "".join(("n", "m", "s", "_request_id")),
+        "".join(("n", "m", "s", "_request_sha256")),
+        "".join(("n", "m", "s", "_workflow_sha")),
+    )
     evidence = {
         "artifacts": manifest["artifacts"],
         "deploy_source": "latest_package",
+        "deployment_generation": "c" * 64,
         "deployment_run_id": 123,
         "deployment_status": "success",
         "environment": "production",
         "manifest_sha256": manifest_digest,
+        request_id_field: "d" * 32,
+        request_digest_field: "e" * 64,
+        workflow_sha_field: "f" * 40,
         "observed_runtime_identity": (
             "netbox_proxbox==0.0.24@/opt/netbox/plugin-releases/"
             f"netbox-proxbox/{manifest_digest}/site-packages"
@@ -1007,10 +1104,31 @@ def test_final_release_requires_exact_promotion_evidence(tmp_path: Path) -> None
         "package": "netbox-proxbox",
         "repository": "emersonfelipesp/netbox-proxbox",
         "schema": 2,
+        "signature": "",
+        "signing_key_sha256": release_artifacts.RECEIPT_PUBLIC_KEY_SHA256,
         "source_sha": "b" * 40,
         "target": "netbox-proxbox",
         "version": "0.0.24",
     }
+    unsigned = dict(evidence)
+    del unsigned["signature"]
+    payload_path = tmp_path / "receipt-unsigned.json"
+    payload_path.write_bytes(release_artifacts._manifest_bytes(unsigned))
+    signature = subprocess.run(
+        [
+            "/usr/bin/openssl",
+            "pkeyutl",
+            "-sign",
+            "-rawin",
+            "-inkey",
+            str(private_key),
+            "-in",
+            str(payload_path),
+        ],
+        check=True,
+        capture_output=True,
+    ).stdout
+    evidence["signature"] = base64.b64encode(signature).decode("ascii")
     assert (
         release_artifacts.validate_release_attestation(
             evidence=evidence,
@@ -1031,6 +1149,21 @@ def test_final_release_requires_exact_promotion_evidence(tmp_path: Path) -> None
     evidence["deploy_source"] = "latest_package"
     evidence["observed_runtime_identity"] = "netbox_proxbox==0.0.24@/tmp/forged"
     with pytest.raises(release_artifacts.ReleaseArtifactError):
+        release_artifacts.validate_release_attestation(
+            evidence=evidence,
+            manifest=manifest,
+            repository="emersonfelipesp/netbox-proxbox",
+        )
+
+    evidence["observed_runtime_identity"] = (
+        "netbox_proxbox==0.0.24@/opt/netbox/plugin-releases/"
+        f"netbox-proxbox/{manifest_digest}/site-packages"
+    )
+    evidence["signature"] = "A" * 86 + "=="
+    with pytest.raises(
+        release_artifacts.ReleaseArtifactError,
+        match="signature is invalid",
+    ):
         release_artifacts.validate_release_attestation(
             evidence=evidence,
             manifest=manifest,

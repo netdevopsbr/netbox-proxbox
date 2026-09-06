@@ -4,11 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import hashlib
 import json
 import os
 import re
 import stat
+import subprocess
+import tempfile
 import time
 import tomllib
 import urllib.error
@@ -24,6 +28,13 @@ MAX_SOURCE_FILES = 50_000
 SHA_RE = re.compile(r"^[a-f0-9]{40}$")
 DIGEST_RE = re.compile(r"^[a-f0-9]{64}$")
 SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+OPENSSL = Path("/usr/bin/openssl")
+RECEIPT_PUBLIC_KEY = (
+    Path(__file__).resolve().parents[1] / ".gitea/deploy-receipt-public.pem"
+)
+RECEIPT_PUBLIC_KEY_SHA256 = (
+    "ce136d7714b6a698f664a4f9fd413e0b4519a4e6fff76a1144819a25935598b4"
+)
 CANONICAL_GITEA_REGISTRY = (
     "https://" + ".".join(("git", "nmulti", "cloud")) + "/api/v1/packages/"
 )
@@ -975,21 +986,110 @@ def fetch_gitea_artifacts(
     return published_manifest
 
 
+def _verify_release_attestation_signature(evidence: dict[str, Any]) -> None:
+    """Verify one receipt against the repository-pinned deployment key."""
+    try:
+        key_metadata = RECEIPT_PUBLIC_KEY.lstat()
+        if (
+            RECEIPT_PUBLIC_KEY.is_symlink()
+            or not stat.S_ISREG(key_metadata.st_mode)
+            or not 1 <= key_metadata.st_size <= 16 * 1024
+            or not OPENSSL.is_file()
+            or OPENSSL.is_symlink()
+        ):
+            raise ReleaseArtifactError("Deployment receipt verifier is unsafe")
+        public_der = subprocess.run(  # noqa: S603
+            [
+                str(OPENSSL),
+                "pkey",
+                "-pubin",
+                "-in",
+                str(RECEIPT_PUBLIC_KEY),
+                "-outform",
+                "DER",
+            ],
+            check=True,
+            capture_output=True,
+            timeout=10,
+        ).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ReleaseArtifactError(
+            "Deployment receipt verifier is unavailable"
+        ) from exc
+    if (
+        hashlib.sha256(public_der).hexdigest() != RECEIPT_PUBLIC_KEY_SHA256
+        or evidence.get("signing_key_sha256") != RECEIPT_PUBLIC_KEY_SHA256
+    ):
+        raise ReleaseArtifactError("Deployment receipt signing key is not trusted")
+    try:
+        signature = base64.b64decode(str(evidence["signature"]), validate=True)
+    except (ValueError, binascii.Error) as exc:
+        raise ReleaseArtifactError("Deployment receipt signature is invalid") from exc
+    unsigned = dict(evidence)
+    del unsigned["signature"]
+    try:
+        with (
+            tempfile.NamedTemporaryFile(
+                prefix="deploy-receipt-signature-"
+            ) as signature_stream,
+            tempfile.NamedTemporaryFile(
+                prefix="deploy-receipt-payload-"
+            ) as payload_stream,
+        ):
+            signature_stream.write(signature)
+            signature_stream.flush()
+            payload_stream.write(_manifest_bytes(unsigned))
+            payload_stream.flush()
+            verified = subprocess.run(  # noqa: S603
+                [
+                    str(OPENSSL),
+                    "pkeyutl",
+                    "-verify",
+                    "-rawin",
+                    "-pubin",
+                    "-inkey",
+                    str(RECEIPT_PUBLIC_KEY),
+                    "-sigfile",
+                    signature_stream.name,
+                    "-in",
+                    payload_stream.name,
+                ],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+            )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ReleaseArtifactError("Deployment receipt verification failed") from exc
+    if verified.returncode != 0:
+        raise ReleaseArtifactError("Deployment receipt signature is invalid")
+
+
 def validate_release_attestation(
     *, evidence: object, manifest: dict[str, Any], repository: str
 ) -> dict[str, Any]:
     """Validate protected NMS production-deployment evidence."""
+    receipt_prefix = "".join(("n", "m", "s"))
+    request_id_field = receipt_prefix + "_request_id"
+    request_digest_field = receipt_prefix + "_request_sha256"
+    workflow_sha_field = receipt_prefix + "_workflow_sha"
     if not isinstance(evidence, dict) or set(evidence) != {
         "artifacts",
         "deploy_source",
+        "deployment_generation",
         "deployment_run_id",
         "deployment_status",
         "environment",
         "manifest_sha256",
+        request_id_field,
+        request_digest_field,
+        workflow_sha_field,
         "observed_runtime_identity",
         "package",
         "repository",
         "schema",
+        "signature",
+        "signing_key_sha256",
         "source_sha",
         "target",
         "version",
@@ -1025,6 +1125,30 @@ def validate_release_attestation(
     )
     if typed_evidence.get("observed_runtime_identity") != expected_runtime:
         raise ReleaseArtifactError("NMS runtime identity does not match netbox-proxbox")
+    digest_fields = (
+        "deployment_generation",
+        "signing_key_sha256",
+        request_digest_field,
+    )
+    if any(
+        not isinstance(typed_evidence.get(field), str)
+        or DIGEST_RE.fullmatch(typed_evidence[field]) is None
+        for field in digest_fields
+    ):
+        raise ReleaseArtifactError("Deployment receipt digest identity is invalid")
+    request_id = typed_evidence.get(request_id_field)
+    workflow_sha = typed_evidence.get(workflow_sha_field)
+    signature = typed_evidence.get("signature")
+    if (
+        not isinstance(request_id, str)
+        or re.fullmatch(r"[a-f0-9]{32}", request_id) is None
+        or not isinstance(workflow_sha, str)
+        or SHA_RE.fullmatch(workflow_sha) is None
+        or not isinstance(signature, str)
+        or re.fullmatch(r"[A-Za-z0-9+/]{86}==", signature) is None
+    ):
+        raise ReleaseArtifactError("Signed deployment receipt identity is invalid")
+    _verify_release_attestation_signature(typed_evidence)
     return typed_evidence
 
 

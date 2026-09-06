@@ -1564,13 +1564,15 @@ Final and post-release tags remain private until production validation and
 against current canonical main, and verifies both the raw tag object and its
 peeled source commit for annotated and lightweight tags.
 
-This is **preparatory**. Publishing manifests does not by itself enable a
-package deploy: `deploy-production.yml` still rejects every `latest_package`
-request unconditionally, because its consumer -- a four-phase privileged
-protocol against the deploy host -- has not been written yet. Until that lands,
-production deploys use `main_branch`, which needs no manifest and works today.
+The `latest_package` consumer is active. It reads identity only from the
+claimed signed request, fetches and verifies the repository-linked manifest and
+both package artifacts, compares their source, hashes, sizes, and package
+identity with that claim, and passes the unmodified claim to the hardened host
+deployment helper. That host verifies the signature and package bytes again
+before changing the runtime. `main_branch` remains an explicit operator-selected
+override rather than the package-first default.
 
 Versions published before this producer landed have no manifest at all, and a
 manifest cannot be back-filled for an already-published version in a way that
-proves provenance. So the first version published after it is the first one
-that will be eligible for `latest_package` once the consumer exists.
+proves provenance. The first version published after the producer landed is
+therefore the first version eligible for `latest_package`.

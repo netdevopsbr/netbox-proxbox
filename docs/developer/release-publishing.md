@@ -300,11 +300,12 @@ sequenceDiagram
    > registry upload has been verified, so its presence is a reliable signal
    > that a version is deployable.
    >
-   > Producing the manifest is preparatory, not sufficient. This workflow still
-   > rejects every `latest_package` request unconditionally, because the
-   > consumer that binds and deploys a published package has not been written.
-   > Use `main_branch` for production deploys; it needs no manifest and is not
-   > affected.
+   > The package consumer reads identity only from the claimed signed request,
+   > fetches and verifies the exact repository-linked manifest and artifacts,
+   > compares their source, hashes, sizes, and package identity with that claim,
+   > and then passes the claim to the hardened host deployment helper. The host
+   > independently verifies the signature and package bytes before changing the
+   > runtime. The mutable workflow inputs cannot select different package bytes.
    >
    > Versions published before that producer landed have no manifest at all; a
    > manifest cannot be back-filled for an already-published version in a way
@@ -312,8 +313,9 @@ sequenceDiagram
 7. After production integration and health checks pass, dispatch each
    repository's `promote-final-tag.yml` from canonical Gitea `main`. The
    workflow checks out the immutable dispatch SHA, requires it to remain current
-   canonical `main`, and verifies the exact package and protected host-issued deployment receipt before
-   pushing only that tag to the authorized GitHub repository. Then create the
+   canonical `main`, and verifies the exact package and the host-issued
+   deployment receipt against the repository-pinned public key before pushing
+   only that tag to the authorized GitHub repository. Then create the
    proxbox-api and netbox-proxbox GitHub Releases with `--verify-tag`; those
    final tags and protected Gitea deployment receipts authorize
    PyPI/Docker Hub publication.

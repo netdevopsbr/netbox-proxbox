@@ -192,22 +192,74 @@ jobs:
 
           echo "DEPLOY_COMPLETED=true" >> "$GITHUB_ENV"
 
-      - name: Reject a package deploy until the release manifest is published
+      - name: Bind exact package artifacts before deployment
+        if: ${{ env.RESOLVED_SOURCE == 'latest_package' }}
+        env:
+          GITEA_PACKAGE_TOKEN: ${{ secrets.PKG_TOKEN }}
+        run: |
+          set -euo pipefail
+          package_source_sha="$(python3 - "$PROOF_PATH" <<'IDENTITY'
+          import json, os, re, sys
+          request = json.load(open(sys.argv[1]))["request"]
+          expected = {
+              "deploy_source": "latest_package",
+              "owner": "emersonfelipesp",
+              "package_name": "netbox-proxbox",
+              "package_type": "pypi",
+              "package_version": os.environ["PACKAGE_VERSION"],
+              "release_manifest_package": "netbox-proxbox-release-manifest",
+              "repository": "netbox-proxbox",
+              "target_id": 4,
+              "workflow_id": "deploy-production.yml",
+              "workflow_ref": "main",
+              "workflow_sha": os.environ["WORKFLOW_SHA"],
+          }
+          for field, value in expected.items():
+              if request.get(field) != value:
+                  raise SystemExit(f"claimed package request has invalid {field}")
+          if request.get("request_id") != os.environ["DEPLOY_REQUEST_ID"]:
+              raise SystemExit("claimed package request id differs")
+          source_sha = request.get("package_source_sha")
+          if not isinstance(source_sha, str) or not re.fullmatch(r"[a-f0-9]{40}", source_sha):
+              raise SystemExit("claimed package source commit is invalid")
+          artifacts = request.get("artifacts")
+          if not isinstance(artifacts, list) or len(artifacts) != 2:
+              raise SystemExit("claimed package artifact inventory is invalid")
+          print(source_sha)
+          IDENTITY
+          )"
+
+          python3 scripts/release_artifacts.py fetch-gitea \
+            --owner emersonfelipesp --repository netbox-proxbox \
+            --package netbox-proxbox --version "$PACKAGE_VERSION" \
+            --source-sha "$package_source_sha" --dist release-dist \
+            --manifest release-manifest.json
+
+          python3 - "$PROOF_PATH" release-manifest.json <<'VERIFY'
+          import hashlib, json, sys
+          request = json.load(open(sys.argv[1]))["request"]
+          raw = open(sys.argv[2], "rb").read()
+          manifest = json.loads(raw)
+          if hashlib.sha256(raw).hexdigest() != request.get("release_manifest_sha256"):
+              raise SystemExit("release manifest differs from the claimed digest")
+          expected_artifacts = [
+              {"name": row["filename"], "sha256": row["sha256"], "size": row["size"]}
+              for row in request["artifacts"]
+          ]
+          if manifest.get("artifacts") != expected_artifacts:
+              raise SystemExit("release manifest differs from the claimed artifacts")
+          if manifest.get("source_sha") != request.get("package_source_sha"):
+              raise SystemExit("release manifest differs from the claimed source")
+          VERIFY
+
+      - name: Deploy the exact package the request authorizes
         if: ${{ env.RESOLVED_SOURCE == 'latest_package' }}
         run: |
           set -euo pipefail
-          cat >&2 <<'MSG'
-          latest_package cannot be deployed yet.
-
-          scripts/release_artifacts.py fetch-gitea requires a generic
-          <package>-release-manifest/<version> package, and publish-gitea.yml has
-          never produced one -- no version has it, so this path would fail at "Bind
-          exact package artifacts" whichever version is chosen.
-
-          Publish the manifest from the release workflow first (see the follow-up on
-          netbox-proxbox issue #362). Until then use main_branch, which needs none.
-          MSG
-          exit 1
+          /opt/nmulticloud/deploy/bin/deploy-netbox-plugin-package \
+            netbox-proxbox "$PACKAGE_VERSION" "$DEPLOY_REQUEST_ID" "$PROOF_PATH" \
+            "$DEPLOY_REQUEST_SHA256" "$GITHUB_RUN_ID"
+          echo "DEPLOY_COMPLETED=true" >> "$GITHUB_ENV"
 
       - name: Require that something was actually deployed
         run: |
@@ -239,7 +291,8 @@ jobs:
         run: |
           set -euo pipefail
           /opt/nmulticloud/deploy/bin/export-package-deploy-receipt \
-            netbox-proxbox "$PACKAGE_VERSION" "$GITHUB_RUN_ID" > completion.json
+            netbox-proxbox "$PACKAGE_VERSION" "$DEPLOY_REQUEST_ID" \
+            "$DEPLOY_REQUEST_SHA256" "$GITHUB_RUN_ID" > completion.json
           python3 scripts/release_artifacts.py validate-attestation \
             --manifest release-manifest.json --attestation completion.json \
             --repository emersonfelipesp/netbox-proxbox
