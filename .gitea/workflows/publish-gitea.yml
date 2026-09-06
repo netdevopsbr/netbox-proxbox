@@ -52,7 +52,8 @@ jobs:
           fi
           echo "resume_existing=${RESUME_EXISTING}" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout tag
+      - id: checkout_tag
+        name: Checkout tag
         env:
           TAG: ${{ steps.resolve_tag.outputs.tag }}
         run: |
@@ -60,21 +61,28 @@ jobs:
           test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"
           test "${GITHUB_REPOSITORY}" = "emersonfelipesp/netbox-proxbox"
           printf '%s' "${TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+|\.post[0-9]+)?$'
-          test ! -e validation-source
-          mkdir -m 0700 validation-source
-          git -C validation-source init .
-          git -C validation-source remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
-          git -C validation-source fetch --depth=1 --no-tags origin "+refs/tags/${TAG}:refs/tags/${TAG}"
-          git -C validation-source checkout --detach --force "refs/tags/${TAG}^{commit}"
-          test -z "$(git -C validation-source status --porcelain --untracked-files=all)"
+          VALIDATION_SOURCE="$(mktemp -d /tmp/netbox-proxbox-validation.XXXXXX)"
+          chmod 0700 "${VALIDATION_SOURCE}"
+          echo "source_dir=${VALIDATION_SOURCE}" >> "$GITHUB_OUTPUT"
+          git -C "${VALIDATION_SOURCE}" init .
+          git -C "${VALIDATION_SOURCE}" remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git -C "${VALIDATION_SOURCE}" fetch --depth=1 --no-tags origin "+refs/tags/${TAG}:refs/tags/${TAG}"
+          git -C "${VALIDATION_SOURCE}" checkout --detach --force "refs/tags/${TAG}^{commit}"
+          test -z "$(git -C "${VALIDATION_SOURCE}" status --porcelain --untracked-files=all)"
 
       - id: extract
         name: Extract and validate version
-        working-directory: validation-source
+        working-directory: ${{ steps.checkout_tag.outputs.source_dir }}
         env:
           TAG: ${{ steps.resolve_tag.outputs.tag }}
+          VALIDATION_SOURCE: ${{ steps.checkout_tag.outputs.source_dir }}
         run: |
           set -euo pipefail
+          case "${VALIDATION_SOURCE}" in
+            /tmp/netbox-proxbox-validation.*) ;;
+            *) echo "ERROR: unsafe validation checkout path" >&2; exit 1 ;;
+          esac
+          trap 'cd / && rm -rf -- "${VALIDATION_SOURCE}"' EXIT
           VERSION="${TAG#v}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"

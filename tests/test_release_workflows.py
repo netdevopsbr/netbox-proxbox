@@ -1806,14 +1806,18 @@ def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
     validate_checkout = _step(validate, "Checkout tag")
     assert "uses" not in validate_checkout
     assert "+refs/tags/${TAG}:refs/tags/${TAG}" in validate_checkout["run"]
-    assert "test ! -e validation-source" in validate_checkout["run"]
-    assert "mkdir -m 0700 validation-source" in validate_checkout["run"]
-    assert "git -C validation-source init ." in validate_checkout["run"]
+    assert "mktemp -d /tmp/netbox-proxbox-validation.XXXXXX" in validate_checkout["run"]
+    assert 'chmod 0700 "${VALIDATION_SOURCE}"' in validate_checkout["run"]
+    assert 'echo "source_dir=${VALIDATION_SOURCE}"' in validate_checkout["run"]
+    assert 'git -C "${VALIDATION_SOURCE}" init .' in validate_checkout["run"]
     assert "git init ." not in validate_checkout["run"]
     assert (
         _step(validate, "Extract and validate version")["working-directory"]
-        == "validation-source"
+        == "${{ steps.checkout_tag.outputs.source_dir }}"
     )
+    extract_run = _step(validate, "Extract and validate version")["run"]
+    assert "/tmp/netbox-proxbox-validation.*" in extract_run
+    assert 'rm -rf -- "${VALIDATION_SOURCE}"' in extract_run
     assert (
         'test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"'
         in (validate_checkout["run"])
