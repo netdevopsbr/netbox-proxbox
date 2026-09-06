@@ -1805,6 +1805,8 @@ def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
     assert validate["runs-on"] == "mirror-host"
     validate_checkout = _step(validate, "Checkout tag")
     assert "uses" not in validate_checkout
+    assert 'GITHUB_SERVER_URL="${GITHUB_SERVER_URL%/}"' in validate_checkout["run"]
+    assert "Package validation identity:" in validate_checkout["run"]
     assert "+refs/tags/${TAG}:refs/tags/${TAG}" in validate_checkout["run"]
     assert "mktemp -d /tmp/netbox-proxbox-validation.XXXXXX" in validate_checkout["run"]
     assert 'chmod 0700 "${VALIDATION_SOURCE}"' in validate_checkout["run"]

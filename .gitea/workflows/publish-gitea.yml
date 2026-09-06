@@ -58,6 +58,8 @@ jobs:
           TAG: ${{ steps.resolve_tag.outputs.tag }}
         run: |
           set -euo pipefail
+          GITHUB_SERVER_URL="${GITHUB_SERVER_URL%/}"
+          printf 'Package validation identity: server=%q repository=%q\n' "${GITHUB_SERVER_URL}" "${GITHUB_REPOSITORY}"
           test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"
           test "${GITHUB_REPOSITORY}" = "emersonfelipesp/netbox-proxbox"
           if ! printf '%s' "${TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+|\.post[0-9]+)?$'; then
