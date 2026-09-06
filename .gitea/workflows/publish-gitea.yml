@@ -60,15 +60,39 @@ jobs:
           set -euo pipefail
           test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"
           test "${GITHUB_REPOSITORY}" = "emersonfelipesp/netbox-proxbox"
-          printf '%s' "${TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+|\.post[0-9]+)?$'
+          if ! printf '%s' "${TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+|\.post[0-9]+)?$'; then
+            echo "ERROR: package validation received an invalid tag" >&2
+            exit 1
+          fi
           VALIDATION_SOURCE="$(mktemp -d /tmp/netbox-proxbox-validation.XXXXXX)"
+          case "${VALIDATION_SOURCE}" in
+            /tmp/netbox-proxbox-validation.*) ;;
+            *) echo "ERROR: temporary checkout path is outside the approved root" >&2; exit 1 ;;
+          esac
+          trap 'status=$?; if [ "${status}" -ne 0 ]; then cd / && rm -rf -- "${VALIDATION_SOURCE}"; fi; exit "${status}"' EXIT
           chmod 0700 "${VALIDATION_SOURCE}"
           echo "source_dir=${VALIDATION_SOURCE}" >> "$GITHUB_OUTPUT"
-          git -C "${VALIDATION_SOURCE}" init .
-          git -C "${VALIDATION_SOURCE}" remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
-          git -C "${VALIDATION_SOURCE}" fetch --depth=1 --no-tags origin "+refs/tags/${TAG}:refs/tags/${TAG}"
-          git -C "${VALIDATION_SOURCE}" checkout --detach --force "refs/tags/${TAG}^{commit}"
-          test -z "$(git -C "${VALIDATION_SOURCE}" status --porcelain --untracked-files=all)"
+          if ! git -C "${VALIDATION_SOURCE}" init .; then
+            echo "ERROR: could not initialize the isolated validation repository" >&2
+            exit 1
+          fi
+          if ! git -C "${VALIDATION_SOURCE}" remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"; then
+            echo "ERROR: could not configure the canonical validation remote" >&2
+            exit 1
+          fi
+          if ! git -C "${VALIDATION_SOURCE}" fetch --depth=1 --no-tags origin "+refs/tags/${TAG}:refs/tags/${TAG}"; then
+            echo "ERROR: could not fetch the requested canonical tag" >&2
+            exit 1
+          fi
+          if ! git -C "${VALIDATION_SOURCE}" checkout --detach --force "refs/tags/${TAG}^{commit}"; then
+            echo "ERROR: could not check out the requested tag commit" >&2
+            exit 1
+          fi
+          if ! test -z "$(git -C "${VALIDATION_SOURCE}" status --porcelain --untracked-files=all)"; then
+            echo "ERROR: isolated tag checkout is not clean" >&2
+            exit 1
+          fi
+          trap - EXIT
 
       - id: extract
         name: Extract and validate version

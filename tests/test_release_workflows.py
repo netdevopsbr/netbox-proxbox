@@ -1810,6 +1810,11 @@ def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
     assert 'chmod 0700 "${VALIDATION_SOURCE}"' in validate_checkout["run"]
     assert 'echo "source_dir=${VALIDATION_SOURCE}"' in validate_checkout["run"]
     assert 'git -C "${VALIDATION_SOURCE}" init .' in validate_checkout["run"]
+    assert "could not fetch the requested canonical tag" in validate_checkout["run"]
+    assert "could not check out the requested tag commit" in validate_checkout["run"]
+    assert 'if [ "${status}" -ne 0 ]' in validate_checkout["run"]
+    assert 'rm -rf -- "${VALIDATION_SOURCE}"' in validate_checkout["run"]
+    assert "trap - EXIT" in validate_checkout["run"]
     assert "git init ." not in validate_checkout["run"]
     assert (
         _step(validate, "Extract and validate version")["working-directory"]
