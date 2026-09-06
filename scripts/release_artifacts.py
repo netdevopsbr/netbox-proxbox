@@ -24,6 +24,9 @@ MAX_SOURCE_FILES = 50_000
 SHA_RE = re.compile(r"^[a-f0-9]{40}$")
 DIGEST_RE = re.compile(r"^[a-f0-9]{64}$")
 SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+CANONICAL_GITEA_REGISTRY = (
+    "https://" + ".".join(("git", "nmulti", "cloud")) + "/api/v1/packages/"
+)
 
 
 class ReleaseArtifactError(ValueError):
@@ -1176,7 +1179,7 @@ def main() -> None:
     publish_attest.add_argument("--manifest", type=Path, required=True)
     publish_attest.add_argument("--attestation", type=Path, required=True)
     verify_registry = subparsers.add_parser("verify-registry")
-    verify_registry.add_argument("--registry", required=True)
+    verify_registry.add_argument("--registry", default=CANONICAL_GITEA_REGISTRY)
     verify_registry.add_argument("--owner", required=True)
     verify_registry.add_argument("--repository", required=True)
     verify_registry.add_argument("--package", required=True)
@@ -1186,7 +1189,7 @@ def main() -> None:
     verify_registry.add_argument("--delay-seconds", type=float, default=0)
 
     prepare_upload = subparsers.add_parser("prepare-upload")
-    prepare_upload.add_argument("--registry", required=True)
+    prepare_upload.add_argument("--registry", default=CANONICAL_GITEA_REGISTRY)
     prepare_upload.add_argument("--owner", required=True)
     prepare_upload.add_argument("--repository", required=True)
     prepare_upload.add_argument("--package", required=True)
@@ -1212,7 +1215,7 @@ def main() -> None:
     validate_rulesets.add_argument("--repository", required=True)
 
     publish_manifest = subparsers.add_parser("publish-manifest")
-    publish_manifest.add_argument("--registry", required=True)
+    publish_manifest.add_argument("--registry", default=CANONICAL_GITEA_REGISTRY)
     publish_manifest.add_argument("--owner", required=True)
     publish_manifest.add_argument("--repository", required=True)
     publish_manifest.add_argument("--manifest", type=Path, required=True)

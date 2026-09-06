@@ -89,6 +89,9 @@ sequenceDiagram
   and requires an RC version.
 - Package uploads intentionally omit `twine --skip-existing`; a consumed version
   must move forward to the next `.postN` or `rcN`.
+- Authenticated registry helper calls use the explicit canonical HTTPS package
+  API origin. The runner-provided server URL may be an internal HTTP transport
+  address and is never accepted as package authority.
 - The active in-repository Gitea publisher requires the runner's exact Python
   3.13.5. Before candidate checkout or any credential-bearing step, canonical
   control code downloads the official uv 0.12.5 Linux x86-64 archive into a

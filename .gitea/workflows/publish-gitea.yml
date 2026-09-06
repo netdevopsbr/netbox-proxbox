@@ -337,7 +337,6 @@ jobs:
             RESUME_ARGS+=(--resume-existing --attempts 12 --delay-seconds 5)
           fi
           ARTIFACT_ACTION="$(python3 scripts/release_artifacts.py prepare-upload \
-            --registry "${GITHUB_SERVER_URL}/api/v1/packages/" \
             --owner emersonfelipesp \
             --repository "${REPO_NAME}" \
             --package "${PKG_NAME}" \
@@ -466,12 +465,11 @@ jobs:
           # the manifest recorded.
           PKG_NAME=netbox-proxbox
           REPO_NAME=netbox-proxbox
-          # The forge origin comes from the runner rather than being written
-          # down here. release_artifacts still pins the permitted origin
-          # itself, so a wrong value fails closed rather than reaching an
-          # unexpected host.
+          # The package authority is the canonical public HTTPS origin. Gitea
+          # may expose an internal HTTP transport through GITHUB_SERVER_URL;
+          # release_artifacts rejects that value rather than sending a package
+          # credential to a non-canonical origin.
           python3 scripts/release_artifacts.py verify-registry \
-            --registry "${GITHUB_SERVER_URL}/api/v1/packages/" \
             --owner emersonfelipesp \
             --repository "${REPO_NAME}" \
             --package "${PKG_NAME}" \
@@ -503,7 +501,6 @@ jobs:
           # silently rebind an immutable release.
           REPO_NAME=netbox-proxbox
           python3 scripts/release_artifacts.py publish-manifest \
-            --registry "${GITHUB_SERVER_URL}/api/v1/packages/" \
             --owner emersonfelipesp \
             --repository "${REPO_NAME}" \
             --manifest release-manifest.json

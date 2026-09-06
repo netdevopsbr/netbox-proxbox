@@ -1870,6 +1870,16 @@ def test_gitea_publish_uses_pinned_tools_and_resumable_upload() -> None:
     )
     assert "--python .venv/bin/python --out-dir dist sanitized-candidate" in build
     assert "rm -- dist/.gitignore" not in build
+    assert "--registry" not in workflow_text
+    release_artifacts = _load_release_artifacts()
+    release_source = RELEASE_ARTIFACTS_PATH.read_text(encoding="utf-8")
+    assert release_artifacts.CANONICAL_GITEA_REGISTRY == _TEST_REGISTRY
+    assert (
+        release_source.count(
+            'add_argument("--registry", default=CANONICAL_GITEA_REGISTRY)'
+        )
+        == 3
+    )
     assert "release_artifacts.py sanitize-build-source" in build
     assert "--source candidate --destination sanitized-candidate" in build
     assert "--out-dir dist sanitized-candidate" in build
