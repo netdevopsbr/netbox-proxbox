@@ -171,6 +171,38 @@ jobs:
           git checkout --detach --force refs/release-policy/control-main
           test -z "$(git status --porcelain --untracked-files=all)"
 
+      - name: Bootstrap pinned uv toolchain
+        env:
+          UV_VERSION: "0.12.5"
+          UV_ARCHIVE_SHA256: "68a509da24b06b4223a1c0175fb5eb5bc79342b76cbeff0cfe51ac3f5b17b6b2"
+        run: |
+          set -euo pipefail
+          for tool in curl sha256sum tar; do
+            command -v "${tool}" >/dev/null 2>&1 || {
+              echo "ERROR: ${tool} is required to bootstrap the pinned uv toolchain"
+              exit 1
+            }
+          done
+          test -n "${RUNNER_TEMP:-}"
+          case "${RUNNER_TEMP}" in /?*) ;; *) echo "ERROR: RUNNER_TEMP must be absolute" >&2; exit 1 ;; esac
+          TOOL_ROOT="${RUNNER_TEMP}/netbox-proxbox-uv-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          case "${TOOL_ROOT}" in "${RUNNER_TEMP}"/netbox-proxbox-uv-*) ;; *) echo "ERROR: unsafe tool root" >&2; exit 1 ;; esac
+          test ! -e "${TOOL_ROOT}"
+          mkdir -m 0700 "${TOOL_ROOT}"
+          UV_ARCHIVE="${TOOL_ROOT}/uv-x86_64-unknown-linux-gnu.tar.gz"
+          curl --fail --silent --show-error --location --max-redirs 3 \
+            --proto '=https' --tlsv1.2 \
+            --output "${UV_ARCHIVE}" \
+            "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-gnu.tar.gz"
+          printf '%s  %s\n' "${UV_ARCHIVE_SHA256}" "${UV_ARCHIVE}" | \
+            sha256sum --check --strict
+          tar --extract --gzip --file "${UV_ARCHIVE}" --directory "${TOOL_ROOT}" \
+            --no-same-owner --no-same-permissions
+          UV_BIN="${TOOL_ROOT}/uv-x86_64-unknown-linux-gnu/uv"
+          test -x "${UV_BIN}"
+          test "$("${UV_BIN}" --version)" = "uv ${UV_VERSION}"
+          printf 'UV_BIN=%s\n' "${UV_BIN}" >> "${GITHUB_ENV}"
+
       - name: Checkout candidate tag as passive build input
         run: |
           set -euo pipefail
@@ -204,27 +236,23 @@ jobs:
           test "$(git -C candidate rev-parse HEAD^{commit})" = \
             "${EXPECTED_SOURCE_SHA}"
 
-      - name: Verify pre-provisioned build tools
+      - name: Verify fixed build tools
         env:
-          PYTHON_VERSION: "3.12.14"
+          PYTHON_VERSION: "3.13.5"
           UV_VERSION: "0.12.5"
         run: |
           set -euo pipefail
-          # Release jobs install no executable tooling. The accepted runner
-          # image must already provide the exact reviewed uv version; otherwise
-          # this fails before candidate code is built or a credential is used.
-          for tool in python3 uv; do
-            command -v "${tool}" >/dev/null 2>&1 || {
-              echo "ERROR: pre-provisioned ${tool} is required"
-              exit 1
-            }
-          done
+          command -v python3 >/dev/null 2>&1 || {
+            echo "ERROR: pre-provisioned python3 is required"
+            exit 1
+          }
+          test -x "${UV_BIN}"
           ACTUAL_PYTHON="$(python3 --version 2>&1)"
           if [ "${ACTUAL_PYTHON}" != "Python ${PYTHON_VERSION}" ]; then
             echo "ERROR: expected 'Python ${PYTHON_VERSION}', got '${ACTUAL_PYTHON}'"
             exit 1
           fi
-          ACTUAL_UV="$(uv --version)"
+          ACTUAL_UV="$("${UV_BIN}" --version)"
           if [ "${ACTUAL_UV}" != "uv ${UV_VERSION}" ]; then
             echo "ERROR: expected 'uv ${UV_VERSION}', got '${ACTUAL_UV}'"
             exit 1
@@ -241,7 +269,7 @@ jobs:
           # the credential-bearing uploader are the reviewed, pinned ones
           # (hatchling 1.31.0, twine 6.2.0) instead of whatever resolution
           # happens to pick on the day.
-          uv sync --python "$(command -v python3)" --no-python-downloads \
+          "${UV_BIN}" sync --python "$(command -v python3)" --no-python-downloads \
             --only-group publish --locked --no-install-project
           ACTUAL_HATCHLING="$(.venv/bin/python -c \
             'from importlib.metadata import version; print(version("hatchling"))')"
@@ -249,11 +277,11 @@ jobs:
             echo "ERROR: expected hatchling 1.31.0, got ${ACTUAL_HATCHLING}"
             exit 1
           }
-          test "$(.venv/bin/python --version 2>&1)" = "Python 3.12.14"
+          test "$(.venv/bin/python --version 2>&1)" = "Python 3.13.5"
           python3 scripts/release_artifacts.py sanitize-build-source \
             --source candidate --destination sanitized-candidate \
             --package netbox-proxbox --version "${VERSION}"
-          uv build --no-build-isolation --python .venv/bin/python \
+          "${UV_BIN}" build --no-build-isolation --python .venv/bin/python \
             --out-dir dist sanitized-candidate
           ls dist/
 
@@ -284,9 +312,9 @@ jobs:
           # control metadata, then prove candidate processing did not modify
           # the reviewed helper or lock inputs.
           rm -rf -- .venv
-          uv sync --python "$(command -v python3)" --no-python-downloads \
+          "${UV_BIN}" sync --python "$(command -v python3)" --no-python-downloads \
             --only-group publish --locked --no-install-project
-          test "$(.venv/bin/python --version 2>&1)" = "Python 3.12.14"
+          test "$(.venv/bin/python --version 2>&1)" = "Python 3.13.5"
           test "$(.venv/bin/python -c \
             'from importlib.metadata import version; print(version("hatchling"))')" = \
             "1.31.0"

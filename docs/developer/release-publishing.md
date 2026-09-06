@@ -89,12 +89,15 @@ sequenceDiagram
   and requires an RC version.
 - Package uploads intentionally omit `twine --skip-existing`; a consumed version
   must move forward to the next `.postN` or `rcN`.
-- The Gitea publisher installs no executable tools. Its runner image must
-  already provide exactly Python 3.12.14 and uv 0.12.5; the build uses the
-  locked Hatchling 1.31.0 from that interpreter's synchronized environment
-  with PEP 517 build isolation disabled. An RC promotion also requires a
-  pre-provisioned, authenticated GitHub CLI. Missing or unexpected tooling
-  fails before a distribution is built or a package credential is used.
+- The active in-repository Gitea publisher requires the runner's exact Python
+  3.13.5. Before candidate checkout or any credential-bearing step, canonical
+  control code downloads the official uv 0.12.5 Linux x86-64 archive into a
+  runner-owned temporary directory, verifies its pinned SHA-256, and retains
+  that exact verified binary path for every locked sync and build. The build
+  uses locked Hatchling 1.31.0 from the synchronized environment with PEP 517
+  build isolation disabled. An RC promotion also requires a pre-provisioned,
+  authenticated GitHub CLI. Missing or unexpected tooling fails before a
+  distribution is built or a package credential is used.
 - The workflow is dispatched only from canonical Gitea `main`; pushing a tag
   cannot invoke the publisher, and both release workflows require the exact
   canonical repository identity. It checks out the immutable dispatch SHA as the

@@ -930,6 +930,10 @@ that authorizes PyPI.
 > byte-verifies the Gitea package, and publishes its manifest. Final tags and
 > GitHub Releases remain behind production validation and the separate
 > promotion procedure.
+> The active runner provides exact Python 3.13.5. The workflow downloads only
+> the official uv 0.12.5 Linux x86-64 archive before candidate checkout,
+> verifies its pinned SHA-256 before extraction or execution, and retains its
+> exact runner-temporary path for every locked build and publisher sync.
 >
 > This restores the path that shipped `0.0.23`. It is a deliberate, tracked
 > deferral of the isolated control plane, not a regression. Re-landing that
@@ -1533,11 +1537,14 @@ Hatchling backend, hook-free build configuration, and fixed README/license
 paths. It rejects symlinks, hard-linked or special files, and out-of-root paths,
 then copies the bounded candidate inventory through no-follow descriptors into a
 sanitized build tree. Secret-bearing steps execute only canonical control code
-and a freshly recreated locked environment. The publisher installs
-no executable tooling. The release runner must already
-provide exactly Python 3.12.14 and uv 0.12.5. It synchronizes the locked publish
-group into that interpreter, verifies Hatchling 1.31.0, and disables PEP 517
-build isolation so a rebuild cannot resolve another backend. RC promotion also
+and a freshly recreated locked environment. The active runner must provide
+exactly Python 3.13.5. Before candidate checkout or credential-bearing steps,
+the canonical workflow downloads the official uv 0.12.5 Linux x86-64 archive
+over HTTPS into a runner-owned temporary directory, verifies its pinned
+SHA-256, and executes only the verified binary at that exact path. It
+synchronizes the locked publish group into the runner interpreter, verifies
+Hatchling 1.31.0, and disables PEP 517 build isolation so a rebuild cannot
+resolve another backend. RC promotion also
 requires an authenticated GitHub CLI. Fresh publication requires authoritative
 registry absence. An interrupted run may be dispatched with
 `resume_existing=true`; the rerun rebuilds the manifest, polls with a fixed

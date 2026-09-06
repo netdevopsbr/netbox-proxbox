@@ -1770,14 +1770,16 @@ def test_upload_preflight_requires_the_package_owner_token(
         )
 
 
-def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
+def test_gitea_publish_uses_pinned_tools_and_resumable_upload() -> None:
     workflow_text = _read(GITEA_PUBLISH_WORKFLOW)
     workflow = yaml.safe_load(workflow_text)
     validate = workflow["jobs"]["validate-version"]
     publish = workflow["jobs"]["publish-gitea"]
     steps = publish["steps"]
     names = [step["name"] for step in steps]
-    tools = _step(publish, "Verify pre-provisioned build tools")["run"]
+    bootstrap_step = _step(publish, "Bootstrap pinned uv toolchain")
+    bootstrap = bootstrap_step["run"]
+    tools = _step(publish, "Verify fixed build tools")["run"]
     package_preflight_step = _step(publish, "Preflight immutable package state")
     preflight = package_preflight_step["run"]
     rc_preflight_step = _step(publish, "Reserve and verify RC promotion")
@@ -1794,11 +1796,24 @@ def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
         "type": "boolean",
         "default": False,
     }
-    assert "for tool in python3 uv" in tools
+    assert bootstrap_step["env"] == {
+        "UV_VERSION": "0.12.5",
+        "UV_ARCHIVE_SHA256": "68a509da24b06b4223a1c0175fb5eb5bc79342b76cbeff0cfe51ac3f5b17b6b2",
+    }
+    assert "for tool in curl sha256sum tar" in bootstrap
+    assert (
+        "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-gnu.tar.gz"
+        in bootstrap
+    )
+    assert "sha256sum --check --strict" in bootstrap
+    assert "--no-same-owner --no-same-permissions" in bootstrap
+    assert 'test "$("${UV_BIN}" --version)" = "uv ${UV_VERSION}"' in bootstrap
+    assert "printf 'UV_BIN=%s\\n'" in bootstrap
+    assert "command -v python3" in tools
+    assert 'test -x "${UV_BIN}"' in tools
     assert 'ACTUAL_PYTHON="$(python3 --version 2>&1)"' in tools
     assert "Python ${PYTHON_VERSION}" in tools
-    assert 'ACTUAL_UV="$(uv --version)"' in tools
-    assert "curl" not in tools
+    assert 'ACTUAL_UV="$("${UV_BIN}" --version)"' in tools
     assert "install.sh" not in workflow_text
     assert "apt-get" not in workflow_text
     assert "Install GitHub CLI" not in names
@@ -1843,7 +1858,7 @@ def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
     assert upload["if"] == "env.ARTIFACT_ACTION == 'upload'"
     assert "--attempts 12" in verify and "--delay-seconds 5" in verify
     assert "sleep 5" not in verify
-    assert "uv build --no-build-isolation --python .venv/bin/python" in build
+    assert '"${UV_BIN}" build --no-build-isolation --python .venv/bin/python' in build
     assert "release_artifacts.py sanitize-build-source" in build
     assert "--source candidate --destination sanitized-candidate" in build
     assert "--out-dir dist sanitized-candidate" in build
@@ -1870,7 +1885,9 @@ def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
         "Publish to Gitea Package Registry"
     )
     assert (
-        names.index("Build distributions")
+        names.index("Bootstrap pinned uv toolchain")
+        < names.index("Checkout candidate tag as passive build input")
+        < names.index("Build distributions")
         < names.index("Recreate fixed publisher environment")
         < names.index("Preflight immutable package state")
     )
@@ -1907,19 +1924,17 @@ def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
     ("commands", "expected_success"),
     [
         ({"uv": "uv 0.12.5"}, False),
-        ({"python3": "Python 3.12.14"}, False),
-        ({"python3": "Python 3.11.9", "uv": "uv 0.12.5"}, False),
-        ({"python3": "Python 3.12.14", "uv": "uv 9.9.9"}, False),
-        ({"python3": "Python 3.12.14", "uv": "uv 0.12.5"}, True),
+        ({"python3": "Python 3.13.5"}, False),
+        ({"python3": "Python 3.12.14", "uv": "uv 0.12.5"}, False),
+        ({"python3": "Python 3.13.5", "uv": "uv 9.9.9"}, False),
+        ({"python3": "Python 3.13.5", "uv": "uv 0.12.5"}, True),
     ],
 )
-def test_preprovisioned_tool_gate_fails_closed(
+def test_fixed_tool_gate_fails_closed(
     tmp_path: Path, commands: dict[str, str], expected_success: bool
 ) -> None:
     workflow = yaml.safe_load(_read(GITEA_PUBLISH_WORKFLOW))
-    run = _step(
-        workflow["jobs"]["publish-gitea"], "Verify pre-provisioned build tools"
-    )["run"]
+    run = _step(workflow["jobs"]["publish-gitea"], "Verify fixed build tools")["run"]
     binary_dir = tmp_path / "bin"
     binary_dir.mkdir()
     for command, output in commands.items():
@@ -1934,8 +1949,9 @@ def test_preprovisioned_tool_gate_fails_closed(
         capture_output=True,
         env={
             "PATH": str(binary_dir),
-            "PYTHON_VERSION": "3.12.14",
+            "PYTHON_VERSION": "3.13.5",
             "UV_VERSION": "0.12.5",
+            "UV_BIN": str(binary_dir / "uv"),
         },
         text=True,
         timeout=10,
