@@ -1802,7 +1802,7 @@ def test_gitea_publish_uses_pinned_tools_and_resumable_upload() -> None:
         "UV_IDENTITY": "uv 0.12.5 (x86_64-unknown-linux-gnu)",
         "UV_ARCHIVE_SHA256": "68a509da24b06b4223a1c0175fb5eb5bc79342b76cbeff0cfe51ac3f5b17b6b2",
     }
-    assert "for tool in curl sha256sum tar" in bootstrap
+    assert "for tool in cmp curl sha256sum tar" in bootstrap
     assert (
         "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-gnu.tar.gz"
         in bootstrap
@@ -1866,6 +1866,11 @@ def test_gitea_publish_uses_pinned_tools_and_resumable_upload() -> None:
     assert "--attempts 12" in verify and "--delay-seconds 5" in verify
     assert "sleep 5" not in verify
     assert '"${UV_BIN}" build --no-build-isolation --python .venv/bin/python' in build
+    assert "test ! -L dist/.gitignore" in build
+    assert "test -f dist/.gitignore" in build
+    assert "printf '*\\n' | cmp --silent - dist/.gitignore" in build
+    assert "rm -- dist/.gitignore" in build
+    assert "test ! -e dist/.gitignore" in build
     assert "release_artifacts.py sanitize-build-source" in build
     assert "--source candidate --destination sanitized-candidate" in build
     assert "--out-dir dist sanitized-candidate" in build
