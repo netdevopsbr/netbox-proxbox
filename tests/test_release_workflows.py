@@ -1825,10 +1825,8 @@ def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
     extract_run = _step(validate, "Extract and validate version")["run"]
     assert "/tmp/netbox-proxbox-validation.*" in extract_run
     assert 'rm -rf -- "${VALIDATION_SOURCE}"' in extract_run
-    assert (
-        'test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"'
-        in (validate_checkout["run"])
-    )
+    assert 'test "${GITEA_ACTIONS}" = "true"' in (validate_checkout["run"])
+    assert workflow_text.count('test "${GITEA_ACTIONS}" = "true"') == 3
     assert "GH_TOKEN" not in package_preflight_step.get("env", {})
     assert "command -v gh" in rc_preflight
     assert "gh auth status --hostname github.com" in rc_preflight
@@ -1884,10 +1882,7 @@ def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
     assert "uses" not in control_checkout
     assert control_checkout["env"]["CONTROL_SHA"] == "${{ github.sha }}"
     assert "refs/heads/main:refs/release-policy/control-main" in control_checkout["run"]
-    assert (
-        'test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"'
-        in control_checkout["run"]
-    )
+    assert 'test "${GITEA_ACTIONS}" = "true"' in control_checkout["run"]
     assert "uses" not in candidate_checkout
     assert (
         "refs/tags/${TAG}:refs/release-policy/candidate-tag-initial"

@@ -60,7 +60,7 @@ jobs:
           set -euo pipefail
           GITHUB_SERVER_URL="${GITHUB_SERVER_URL%/}"
           printf 'Package validation identity: server=%q repository=%q\n' "${GITHUB_SERVER_URL}" "${GITHUB_REPOSITORY}"
-          test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"
+          test "${GITEA_ACTIONS}" = "true"
           test "${GITHUB_REPOSITORY}" = "emersonfelipesp/netbox-proxbox"
           if ! printf '%s' "${TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+|\.post[0-9]+)?$'; then
             echo "ERROR: package validation received an invalid tag" >&2
@@ -158,7 +158,7 @@ jobs:
           CONTROL_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"
+          test "${GITEA_ACTIONS}" = "true"
           test "${GITHUB_REPOSITORY}" = "emersonfelipesp/netbox-proxbox"
           printf '%s' "${CONTROL_SHA}" | grep -Eq '^[a-f0-9]{40}$'
           test -z "$(find . -mindepth 1 -maxdepth 1 -print -quit)"
@@ -174,7 +174,7 @@ jobs:
       - name: Checkout candidate tag as passive build input
         run: |
           set -euo pipefail
-          test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"
+          test "${GITEA_ACTIONS}" = "true"
           test "${GITHUB_REPOSITORY}" = "emersonfelipesp/netbox-proxbox"
           printf '%s' "${EXPECTED_TAG_OBJECT}" | grep -Eq '^[a-f0-9]{40}$'
           printf '%s' "${EXPECTED_SOURCE_SHA}" | grep -Eq '^[a-f0-9]{40}$'
