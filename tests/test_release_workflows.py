@@ -1779,7 +1779,8 @@ def test_gitea_publish_uses_pinned_tools_and_resumable_upload() -> None:
     names = [step["name"] for step in steps]
     bootstrap_step = _step(publish, "Bootstrap pinned uv toolchain")
     bootstrap = bootstrap_step["run"]
-    tools = _step(publish, "Verify fixed build tools")["run"]
+    tools_step = _step(publish, "Verify fixed build tools")
+    tools = tools_step["run"]
     package_preflight_step = _step(publish, "Preflight immutable package state")
     preflight = package_preflight_step["run"]
     rc_preflight_step = _step(publish, "Reserve and verify RC promotion")
@@ -1798,6 +1799,7 @@ def test_gitea_publish_uses_pinned_tools_and_resumable_upload() -> None:
     }
     assert bootstrap_step["env"] == {
         "UV_VERSION": "0.12.5",
+        "UV_IDENTITY": "uv 0.12.5 (x86_64-unknown-linux-gnu)",
         "UV_ARCHIVE_SHA256": "68a509da24b06b4223a1c0175fb5eb5bc79342b76cbeff0cfe51ac3f5b17b6b2",
     }
     assert "for tool in curl sha256sum tar" in bootstrap
@@ -1807,8 +1809,13 @@ def test_gitea_publish_uses_pinned_tools_and_resumable_upload() -> None:
     )
     assert "sha256sum --check --strict" in bootstrap
     assert "--no-same-owner --no-same-permissions" in bootstrap
-    assert 'test "$("${UV_BIN}" --version)" = "uv ${UV_VERSION}"' in bootstrap
+    assert 'test "$("${UV_BIN}" --version)" = "${UV_IDENTITY}"' in bootstrap
     assert "printf 'UV_BIN=%s\\n'" in bootstrap
+    assert tools_step["env"] == {
+        "PYTHON_VERSION": "3.13.5",
+        "UV_VERSION": "0.12.5",
+        "UV_IDENTITY": "uv 0.12.5 (x86_64-unknown-linux-gnu)",
+    }
     assert "command -v python3" in tools
     assert 'test -x "${UV_BIN}"' in tools
     assert 'ACTUAL_PYTHON="$(python3 --version 2>&1)"' in tools
@@ -1923,11 +1930,23 @@ def test_gitea_publish_uses_pinned_tools_and_resumable_upload() -> None:
 @pytest.mark.parametrize(
     ("commands", "expected_success"),
     [
-        ({"uv": "uv 0.12.5"}, False),
+        ({"uv": "uv 0.12.5 (x86_64-unknown-linux-gnu)"}, False),
         ({"python3": "Python 3.13.5"}, False),
-        ({"python3": "Python 3.12.14", "uv": "uv 0.12.5"}, False),
+        (
+            {
+                "python3": "Python 3.12.14",
+                "uv": "uv 0.12.5 (x86_64-unknown-linux-gnu)",
+            },
+            False,
+        ),
         ({"python3": "Python 3.13.5", "uv": "uv 9.9.9"}, False),
-        ({"python3": "Python 3.13.5", "uv": "uv 0.12.5"}, True),
+        (
+            {
+                "python3": "Python 3.13.5",
+                "uv": "uv 0.12.5 (x86_64-unknown-linux-gnu)",
+            },
+            True,
+        ),
     ],
 )
 def test_fixed_tool_gate_fails_closed(
@@ -1951,6 +1970,7 @@ def test_fixed_tool_gate_fails_closed(
             "PATH": str(binary_dir),
             "PYTHON_VERSION": "3.13.5",
             "UV_VERSION": "0.12.5",
+            "UV_IDENTITY": "uv 0.12.5 (x86_64-unknown-linux-gnu)",
             "UV_BIN": str(binary_dir / "uv"),
         },
         text=True,

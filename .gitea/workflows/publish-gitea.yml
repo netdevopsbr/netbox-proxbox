@@ -174,6 +174,7 @@ jobs:
       - name: Bootstrap pinned uv toolchain
         env:
           UV_VERSION: "0.12.5"
+          UV_IDENTITY: "uv 0.12.5 (x86_64-unknown-linux-gnu)"
           UV_ARCHIVE_SHA256: "68a509da24b06b4223a1c0175fb5eb5bc79342b76cbeff0cfe51ac3f5b17b6b2"
         run: |
           set -euo pipefail
@@ -200,7 +201,7 @@ jobs:
             --no-same-owner --no-same-permissions
           UV_BIN="${TOOL_ROOT}/uv-x86_64-unknown-linux-gnu/uv"
           test -x "${UV_BIN}"
-          test "$("${UV_BIN}" --version)" = "uv ${UV_VERSION}"
+          test "$("${UV_BIN}" --version)" = "${UV_IDENTITY}"
           printf 'UV_BIN=%s\n' "${UV_BIN}" >> "${GITHUB_ENV}"
 
       - name: Checkout candidate tag as passive build input
@@ -240,6 +241,7 @@ jobs:
         env:
           PYTHON_VERSION: "3.13.5"
           UV_VERSION: "0.12.5"
+          UV_IDENTITY: "uv 0.12.5 (x86_64-unknown-linux-gnu)"
         run: |
           set -euo pipefail
           command -v python3 >/dev/null 2>&1 || {
@@ -253,8 +255,8 @@ jobs:
             exit 1
           fi
           ACTUAL_UV="$("${UV_BIN}" --version)"
-          if [ "${ACTUAL_UV}" != "uv ${UV_VERSION}" ]; then
-            echo "ERROR: expected 'uv ${UV_VERSION}', got '${ACTUAL_UV}'"
+          if [ "${ACTUAL_UV}" != "${UV_IDENTITY}" ]; then
+            echo "ERROR: expected '${UV_IDENTITY}', got '${ACTUAL_UV}'"
             exit 1
           fi
           printf '%s\n' "${ACTUAL_PYTHON}"
