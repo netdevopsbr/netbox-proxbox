@@ -1773,6 +1773,7 @@ def test_upload_preflight_requires_the_package_owner_token(
 def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
     workflow_text = _read(GITEA_PUBLISH_WORKFLOW)
     workflow = yaml.safe_load(workflow_text)
+    validate = workflow["jobs"]["validate-version"]
     publish = workflow["jobs"]["publish-gitea"]
     steps = publish["steps"]
     names = [step["name"] for step in steps]
@@ -1801,6 +1802,14 @@ def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
     assert "install.sh" not in workflow_text
     assert "apt-get" not in workflow_text
     assert "Install GitHub CLI" not in names
+    assert validate["runs-on"] == "mirror-host"
+    validate_checkout = _step(validate, "Checkout tag")
+    assert "uses" not in validate_checkout
+    assert "+refs/tags/${TAG}:refs/tags/${TAG}" in validate_checkout["run"]
+    assert (
+        'test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"'
+        in (validate_checkout["run"])
+    )
     assert "GH_TOKEN" not in package_preflight_step.get("env", {})
     assert "command -v gh" in rc_preflight
     assert "gh auth status --hostname github.com" in rc_preflight

@@ -22,7 +22,7 @@ concurrency:
 jobs:
   validate-version:
     if: ${{ github.repository == 'emersonfelipesp/netbox-proxbox' && github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
+    runs-on: mirror-host
     outputs:
       version: ${{ steps.extract.outputs.version }}
       is_rc: ${{ steps.extract.outputs.is_rc }}
@@ -53,12 +53,19 @@ jobs:
           echo "resume_existing=${RESUME_EXISTING}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout tag
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ steps.resolve_tag.outputs.tag }}
-          fetch-depth: 0
-          fetch-tags: true
-          persist-credentials: false
+        env:
+          TAG: ${{ steps.resolve_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"
+          test "${GITHUB_REPOSITORY}" = "emersonfelipesp/netbox-proxbox"
+          printf '%s' "${TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+|\.post[0-9]+)?$'
+          test -z "$(find . -mindepth 1 -maxdepth 1 -print -quit)"
+          git init .
+          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 --no-tags origin "+refs/tags/${TAG}:refs/tags/${TAG}"
+          git checkout --detach --force "refs/tags/${TAG}^{commit}"
+          test -z "$(git status --porcelain --untracked-files=all)"
 
       - id: extract
         name: Extract and validate version
