@@ -178,7 +178,7 @@ jobs:
           UV_ARCHIVE_SHA256: "68a509da24b06b4223a1c0175fb5eb5bc79342b76cbeff0cfe51ac3f5b17b6b2"
         run: |
           set -euo pipefail
-          for tool in cmp curl sha256sum tar; do
+          for tool in curl sha256sum tar; do
             command -v "${tool}" >/dev/null 2>&1 || {
               echo "ERROR: ${tool} is required to bootstrap the pinned uv toolchain"
               exit 1
@@ -283,13 +283,8 @@ jobs:
           python3 scripts/release_artifacts.py sanitize-build-source \
             --source candidate --destination sanitized-candidate \
             --package netbox-proxbox --version "${VERSION}"
-          "${UV_BIN}" build --no-build-isolation --python .venv/bin/python \
-            --out-dir dist sanitized-candidate
-          test ! -L dist/.gitignore
-          test -f dist/.gitignore
-          printf '*\n' | cmp --silent - dist/.gitignore
-          rm -- dist/.gitignore
-          test ! -e dist/.gitignore
+          "${UV_BIN}" build --clear --no-create-gitignore --no-build-isolation \
+            --python .venv/bin/python --out-dir dist sanitized-candidate
           ls dist/
 
       - name: Build release manifest

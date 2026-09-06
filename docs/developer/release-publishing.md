@@ -95,10 +95,10 @@ sequenceDiagram
   runner-owned temporary directory, verifies its pinned SHA-256, and retains
   that exact verified binary path for every locked sync and build. The build
   uses locked Hatchling 1.31.0 from the synchronized environment with PEP 517
-  build isolation disabled. Before the strict two-artifact manifest gate, the
-  workflow requires uv's generated `dist/.gitignore` to be a regular,
-  non-symlink file containing exactly `*` plus a newline and removes only that
-  verified build metadata file. An RC promotion also requires a pre-provisioned,
+  build isolation disabled. The build uses uv's native `--clear` and
+  `--no-create-gitignore` controls so the strict manifest gate receives a fresh
+  directory containing only the wheel and source distribution. An RC promotion
+  also requires a pre-provisioned,
   authenticated GitHub CLI. Missing or unexpected tooling fails before a
   distribution is built or a package credential is used.
 - The workflow is dispatched only from canonical Gitea `main`; pushing a tag
