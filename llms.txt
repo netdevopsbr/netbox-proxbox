@@ -18,15 +18,15 @@ netbox-proxbox is a NetBox plugin that synchronizes Proxmox infrastructure data 
 
 ### Requirements
 
-- NetBox 4.5.8 through 4.6.99
+- NetBox 4.5.8 through 4.7.0, including official v4.7.0 GA
 - Python 3.12+
 - Proxmox VE 7.x, 8.x, or 9.x
 - proxbox-api backend (FastAPI service)
 
 ### Version
 
-- Plugin version: `0.0.26`
-- NetBox compatibility: `4.5.8` through `4.6.99`
+- Plugin version: `0.0.26.post1`
+- NetBox compatibility: `4.5.8` through `4.7.0`
 
 ---
 

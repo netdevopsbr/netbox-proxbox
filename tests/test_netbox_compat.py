@@ -74,8 +74,6 @@ SILENCE_SETTING_NAME = compat.SILENCE_SETTING_NAME
 
 STABLE_MIN_NETBOX_VERSION = compat.STABLE_MIN_NETBOX_VERSION
 STABLE_MAX_NETBOX_VERSION = compat.STABLE_MAX_NETBOX_VERSION
-EXPERIMENTAL_MIN_NETBOX_VERSION = compat.EXPERIMENTAL_MIN_NETBOX_VERSION
-EXPERIMENTAL_MAX_NETBOX_VERSION = compat.EXPERIMENTAL_MAX_NETBOX_VERSION
 PLUGIN_MIN_VERSION = compat.PLUGIN_MIN_VERSION
 PLUGIN_MAX_VERSION = compat.PLUGIN_MAX_VERSION
 CONTRACT_VERSION = compat.CONTRACT_VERSION
@@ -200,14 +198,14 @@ def test_compat_imports_no_django_at_module_scope() -> None:
         ("4.6.4", "stable"),
         ("4.6.6", "stable"),
         ("4.6.99", "stable"),
-        # Numeric held line. The separate canonical identity guard narrows
-        # this bare value to beta2.
-        ("4.7.0", "experimental"),
+        # Official NetBox 4.7 GA is stable; prerelease displays remain
+        # experimental so operators receive an advisory.
+        ("4.7.0", "stable"),
         ("4.7.0-beta1", "experimental"),
         ("4.7.0b1", "experimental"),
-        # Above the exact bare 4.7.0 ceiling — refused again.
-        ("4.7.3", "unsupported-new"),
+        ("4.7.1", "unsupported-new"),
         ("4.7.99", "unsupported-new"),
+        ("4.8.0a1", "unsupported-new"),
         ("4.8.0", "unsupported-new"),
         ("5.0.0", "unsupported-new"),
     ],
@@ -222,17 +220,8 @@ def test_band_boundaries_are_exact() -> None:
     """The bands must abut with no gap and no overlap."""
     assert netbox_support_level(STABLE_MIN_NETBOX_VERSION) is NetBoxSupportLevel.STABLE
     assert netbox_support_level(STABLE_MAX_NETBOX_VERSION) is NetBoxSupportLevel.STABLE
-    assert (
-        netbox_support_level(EXPERIMENTAL_MIN_NETBOX_VERSION)
-        is NetBoxSupportLevel.EXPERIMENTAL
-    )
-    assert (
-        netbox_support_level(EXPERIMENTAL_MAX_NETBOX_VERSION)
-        is NetBoxSupportLevel.EXPERIMENTAL
-    )
-    assert parse_version(STABLE_MAX_NETBOX_VERSION) < parse_version(
-        EXPERIMENTAL_MIN_NETBOX_VERSION
-    )
+    assert netbox_support_level("4.7.0a1") is NetBoxSupportLevel.EXPERIMENTAL
+    assert netbox_support_level("4.8.0a1") is NetBoxSupportLevel.UNSUPPORTED_NEW
 
 
 def test_unparseable_version_raises_rather_than_defaulting_to_supported() -> None:
@@ -263,24 +252,23 @@ def test_the_previous_ceiling_would_have_rejected_470_beta1() -> None:
     assert parse_version(NETBOX_470_BETA1_COMPARISON_VERSION) > parse_version("4.6.99")
 
 
-def test_comparison_and_display_strings_classify_identically() -> None:
-    """Whichever form reaches the classifier, the verdict must be the same."""
-    assert (
-        netbox_support_level(NETBOX_470_BETA1_COMPARISON_VERSION)
-        is netbox_support_level(NETBOX_470_BETA1_DISPLAY_VERSION)
-        is NetBoxSupportLevel.EXPERIMENTAL
+def test_comparison_and_display_strings_preserve_ga_and_prerelease_identity() -> None:
+    """The bare GA loader value and prerelease display value have distinct bands."""
+    assert netbox_support_level(NETBOX_470_BETA1_COMPARISON_VERSION) is (
+        NetBoxSupportLevel.STABLE
+    )
+    assert netbox_support_level(NETBOX_470_BETA1_DISPLAY_VERSION) is (
+        NetBoxSupportLevel.EXPERIMENTAL
     )
 
 
 def test_declared_bounds_have_the_expected_literal_values() -> None:
     """Pins the shared contract so a silent band change fails here."""
     assert STABLE_MIN_NETBOX_VERSION == "4.5.8"
-    assert STABLE_MAX_NETBOX_VERSION == "4.6.99"
-    assert EXPERIMENTAL_MIN_NETBOX_VERSION == "4.7.0"
-    assert EXPERIMENTAL_MAX_NETBOX_VERSION == "4.7.0"
+    assert STABLE_MAX_NETBOX_VERSION == "4.7.0"
     assert PLUGIN_MIN_VERSION == STABLE_MIN_NETBOX_VERSION
-    assert PLUGIN_MAX_VERSION == EXPERIMENTAL_MAX_NETBOX_VERSION
-    assert CONTRACT_VERSION == "netbox-compat-v4"
+    assert PLUGIN_MAX_VERSION == STABLE_MAX_NETBOX_VERSION
+    assert CONTRACT_VERSION == "netbox-compat-v5"
 
 
 # ---------------------------------------------------------------------------
@@ -524,7 +512,7 @@ def test_prerelease_hint_does_not_read_as_production_clearance(
     hint = _run_registered_check(registered)[0].hint or ""
     assert SILENCE_SETTING_NAME in hint
     # Silencing the check must not be presented as lifting upstream's restriction.
-    assert "does not\n" not in hint and "does not lift it" in hint
+    assert "does not\n" not in hint and "does not lift" in hint
     assert "fully operational" not in hint
 
 

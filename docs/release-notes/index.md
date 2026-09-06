@@ -4,11 +4,11 @@ This section tracks the release line represented by this repository and keeps ol
 
 ## Current Release Line
 
-The plugin source in this repository is currently `0.0.26` on the
+The plugin source in this repository is currently `0.0.26.post1` on the
 development line. The sibling plugins (`netbox-pbs`,
 `netbox-ceph`, and `netbox-pdm`) live in standalone repositories under
 [@emersonfelipesp](https://github.com/emersonfelipesp) and declare
-`netbox-proxbox>=0.0.18,<0.1.0` as an install-time dependency.
+`netbox-proxbox>=0.0.25.post2,<0.1.0` as an install-time dependency.
 `netbox-packer` is installable standalone but is prepared for certification as
 part of the same plugin family.
 
@@ -16,8 +16,10 @@ part of the same plugin family.
 
 | Version | Summary |
 |---------|---------|
-| `0.0.26` | Adds permission-gated QEMU/LXC browser-console handoff, OpenBao-first and DeviceService credential sources, authoritative Proxmox detail and sync state, guarded retirement of obsolete reflection fields, and resumable identity-verified Gitea/GitHub publication. Pairs with `proxbox-api 0.0.20`, `proxmox-sdk 0.0.13`, and `netbox-sdk 0.0.10`. |
-| `0.0.25` | Certifies NetBox through 4.6.6, repairs settings/storage and encryption-key compatibility, and introduces immutable Gitea-first artifact manifests, authenticated CI evidence, package-first deployment gating, and final-tag promotion controls. Pairs with `proxbox-api 0.0.20`, `proxmox-sdk 0.0.13`, and `netbox-sdk 0.0.10`. |
+| `0.0.26.post1` | Packages the merged NetBox 4.7.0 GA compatibility classifier while retaining the Emerson-owned plugin's 4.5/4.6 backward-compatible cells and easy-upgrade path. |
+| `0.0.25.post2` | Source-only compatibility update that narrowed certified backward-compatible admission to exact NetBox 4.7.0 GA and synchronized the Emerson-owned Proxbox-family contract. |
+| `0.0.25.post1` | Post release for the official NetBox v4.7.0 GA compatibility contract. Retains the 4.5/4.6 backward-compatible cells, pins Docker evidence to the reviewed immutable image, and gives the changed compatibility behavior a new package identity. Pairs with `proxbox-api 0.0.20`, `proxmox-sdk 0.0.13`, and `netbox-sdk 0.0.10`. |
+| `0.0.25` | Certifies NetBox through official v4.7.0 GA while retaining backward-compatible 4.5/4.6 cells, repairs settings/storage and encryption-key compatibility, and introduces immutable Gitea-first artifact manifests, authenticated CI evidence, package-first deployment gating, and final-tag promotion controls. Pairs with `proxbox-api 0.0.20`, `proxmox-sdk 0.0.13`, and `netbox-sdk 0.0.10`. |
 | `0.0.23.post2` | Adds bounded backend and NetBox endpoint auto-configuration: the persisted target is the allowlist, same-site discovery derives only from the trusted NetBox origin, key establishment is automatic only when identity and backend state are proved safe, and redirects, disabled rows, unlisted hosts, or target drift fail closed. |
 | `0.0.23.post1` | Makes `guest_os_model` the universal VM interface sync default, including existing installs. Migration `0060` supersedes the `0.0.23` backward-compat backfill that kept upgrades on `legacy_rename`; `legacy_rename` remains a deprecated selectable opt-out. Pairs with a `proxbox-api` guest-VM-interface writer build / next release, `proxmox-sdk 0.0.12`, and `netbox-sdk 0.0.10`. |
 | `0.0.23` | Dual VM interface sync release: keeps Proxmox NICs as core `VMInterface` rows while writing guest-agent OS interfaces and their shared IP links to `GuestVMInterface` / `GuestVMInterfaceAddress`. Pairs with a `proxbox-api` guest-VM-interface writer build / next release, `proxmox-sdk 0.0.12`, and `netbox-sdk 0.0.10`. |
@@ -55,4 +57,4 @@ part of the same plugin family.
 - Older pages are intentionally brief because the repository does not preserve fuller release-note prose for those versions.
 
 
-> **Current release:** netbox-proxbox `0.0.26` pairs with proxbox-api `0.0.20` (NetBox `4.5.8`-`4.6.99`). Current backend-runtime pairing: netbox-proxbox 0.0.26 <-> proxbox-api 0.0.20 <-> proxmox-sdk 0.0.13 <-> netbox-sdk 0.0.10. This netbox-sdk version is proxbox-api's REST dependency only and does not provide the semantic MCP bridge.
+> **Current release:** netbox-proxbox `0.0.26.post1` pairs with proxbox-api `0.0.20` (NetBox `4.5.8`-`4.7.0`, including official v4.7.0 GA). Current backend-runtime pairing: netbox-proxbox 0.0.26.post1 <-> proxbox-api 0.0.20 <-> proxmox-sdk 0.0.13 <-> netbox-sdk 0.0.10. This netbox-sdk version is proxbox-api's REST dependency only and does not provide the semantic MCP bridge.

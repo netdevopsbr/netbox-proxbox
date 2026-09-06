@@ -4,9 +4,9 @@ This is the recommended installation path for the current repository state.
 
 ## Why This Is Recommended
 
-The code in this repository is `0.0.26` and targets NetBox `4.5.8` through
+The code in this repository is `0.0.26.post1` and targets NetBox `4.5.8` through
 `4.5.10` and `4.6.x` (validated against `v4.5.8` through `v4.5.10` and `v4.6.0`
-through `v4.6.6`). That is the version line reflected by the docs in this
+through `v4.6.6`, and official `v4.7.0` GA). That is the version line reflected by the docs in this
 repository.
 
 ## Install
@@ -35,11 +35,8 @@ PLUGINS = ["netbox_proxbox"]
 ## Notes
 
 - The plugin declares `min_version = "4.5.8"` and `max_version = "4.7.0"`,
-  both sourced from `netbox_proxbox/compat.py`. NetBox `4.5.8` - `4.6.99` is
-  the certified **stable** tier; exact canonical `4.7.0-beta2` is admitted as
-  **experimental** and warns once at startup (system check
-  `netbox_proxbox.W001`) without requiring configuration. Other 4.7 identities
-  cause NetBox to warn and omit the plugin.
+  both sourced from `netbox_proxbox/compat.py`. NetBox `4.5.8` - `4.7.0` is
+  the backward-compatible **stable** tier, including official v4.7.0 GA.
   Silence it with `PLUGINS_CONFIG = {"netbox_proxbox": {"silence_netbox_compatibility_warning": True}}` — NetBox does not read `SILENCED_SYSTEM_CHECKS` from `configuration.py`.
 - Proxbox uses NetBox's JobRunner queue APIs and runs on the default RQ queue (`RQ_QUEUE_DEFAULT`).
 - The project requires Python `>=3.12`.

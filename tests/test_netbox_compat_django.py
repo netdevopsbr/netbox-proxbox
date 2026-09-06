@@ -67,26 +67,21 @@ def test_plugin_config_sources_its_bounds_from_compat() -> None:
     """Catches the wiring being reverted while ``compat.py`` stays correct."""
     from netbox_proxbox import ProxboxConfig
     from netbox_proxbox.compat import (
-        EXPERIMENTAL_MAX_NETBOX_VERSION,
         PLUGIN_MAX_VERSION,
         PLUGIN_MIN_VERSION,
         STABLE_MIN_NETBOX_VERSION,
     )
 
     assert ProxboxConfig.min_version == PLUGIN_MIN_VERSION == STABLE_MIN_NETBOX_VERSION
-    assert (
-        ProxboxConfig.max_version
-        == PLUGIN_MAX_VERSION
-        == EXPERIMENTAL_MAX_NETBOX_VERSION
-    )
+    assert ProxboxConfig.max_version == PLUGIN_MAX_VERSION == "4.7.0"
 
 
 def test_running_netbox_release_is_admitted_by_the_declared_range() -> None:
     """Reproduce NetBox's own gate arithmetic against the release under test.
 
-    On the ``v4.7.0-beta2`` CI leg this is the assertion that fails if the cap
-    is ever lowered again: NetBox passes ``RELEASE.version`` (``"4.7.0"``) to
-    ``PluginConfig.validate()``, so the ceiling has to cover it.
+    On the ``v4.7.0`` GA CI leg this is the assertion that fails if the cap is
+    ever lowered again: NetBox passes ``RELEASE.version`` (``"4.7.0"``) to
+    ``PluginConfig.validate()``, so the ceiling has to cover the GA release.
     """
     from django.conf import settings
 
@@ -161,8 +156,8 @@ def test_ready_registered_the_check_by_injecting_a_4_7_release() -> None:
     expected branch with `current_netbox_support_level()` — the same classifier
     the check itself uses — so both sides move together.
 
-    This test fixes both problems without needing a 4.7 cell. It substitutes
-    **literal** 4.7 release metadata (no classifier involved, no version
+    This test fixes both problems without needing a separate prerelease cell. It
+    substitutes **literal** 4.7 prerelease metadata (no classifier involved, no version
     arithmetic) and re-runs Django's real check registry. The check being
     exercised is the one `ProxboxConfig.ready()` registered at startup — this test never
     calls the registration function itself — so deleting that call makes this
@@ -174,11 +169,9 @@ def test_ready_registered_the_check_by_injecting_a_4_7_release() -> None:
     from django.core.checks import run_checks
 
     class _Release:
-        # Transcribed from netbox/release.yaml at tag v4.7.0-beta2; NetBox
-        # assembles full_version as version[-designation][-build].
-        version = "4.7.0"
-        full_version = "4.7.0-beta2"
-        designation = "beta2"
+        version = "4.7.0a0"
+        full_version = "4.7.0a0"
+        designation = "a0"
 
     with patch.object(settings, "RELEASE", _Release()):
         messages = [
@@ -189,9 +182,9 @@ def test_ready_registered_the_check_by_injecting_a_4_7_release() -> None:
 
     assert len(messages) == 1, (
         "ProxboxConfig.ready() must register the compatibility check exactly once; "
-        f"got {messages} while pretending to run on NetBox 4.7.0-beta2"
+        f"got {messages} while pretending to run on NetBox 4.7.0a0"
     )
-    assert "4.7.0-beta2" in messages[0].msg
+    assert "4.7.0a0" in messages[0].msg
     assert "experimental" in messages[0].msg.lower()
     # The pre-release caveat must survive the real registration path too.
     assert "pre-release" in messages[0].msg.lower()

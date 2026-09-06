@@ -11,7 +11,7 @@ permissions:
 
 env:
   PROXBOX_API_RELEASE_VERSION: 0.0.20
-  NETBOX_IMAGE: netboxcommunity/netbox:v4.6.6
+  NETBOX_IMAGE: netboxcommunity/netbox:v4.7.0-5.1.0@sha256:73a54ff279461170032b59a57a1930929965e3ba15c195af59f4b5f6d39a84a9
   PROXBOX_API_IMAGE: emersonfelipesp/proxbox-api
   PROXMOX_SDK_IMAGE: emersonfelipesp/proxmox-sdk
   PROXBOX_ENCRYPTION_KEY: proxbox-ci-only-encryption-key-not-a-secret
@@ -66,17 +66,7 @@ jobs:
 
           docker pull "${PROXMOX_SDK_IMAGE}:dev-nginx"
           docker pull "${PROXBOX_API_IMAGE}:${PROXBOX_API_RELEASE_VERSION}"
-          if ! docker pull "${NETBOX_IMAGE}" 2>/dev/null; then
-            NETBOX_VERSION="${NETBOX_IMAGE##*:}"
-            git clone --depth 1 https://github.com/netbox-community/netbox-docker.git /tmp/netbox-docker
-            git clone --depth 1 --branch "${NETBOX_VERSION}" \
-              https://github.com/netbox-community/netbox.git /tmp/netbox-docker/.netbox
-            docker build \
-              --build-arg "FROM=ubuntu:24.04" \
-              --build-arg "NETBOX_PATH=.netbox" \
-              -t "${NETBOX_IMAGE}" \
-              /tmp/netbox-docker
-          fi
+          docker pull "${NETBOX_IMAGE}"
 
           docker run -d --name proxmox-e2e-mock --network proxbox-e2e -p 18006:8000 \
             -v "$PWD/tests/e2e/proxmox_openapi_mock_data.json:/data/mock-data.json:ro" \

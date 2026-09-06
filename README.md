@@ -234,31 +234,26 @@ other tenants.
   for troubleshooting. See
   [Recovering / Regenerating Proxbox Data](docs/operations/recovering-proxbox-data.md).
 
-## What's New in v0.0.26
+## What's New in v0.0.26.post1
 
-Current backend-runtime pairing: netbox-proxbox 0.0.26 <-> proxbox-api 0.0.20 <-> proxmox-sdk 0.0.13 <-> netbox-sdk 0.0.10. This netbox-sdk version is proxbox-api's REST dependency only and does not provide the semantic MCP bridge.
+Current backend-runtime pairing: netbox-proxbox 0.0.26.post1 <-> proxbox-api 0.0.20 <-> proxmox-sdk 0.0.13 <-> netbox-sdk 0.0.10. This netbox-sdk version is proxbox-api's REST dependency only and does not provide the semantic MCP bridge.
 
 Paired with backend: `proxbox-api 0.0.20`.
 
-- **Browser-console handoff.** QEMU and LXC detail pages expose a permission-
-  gated HTTPS handoff to the noVNC and xterm.js console service. The feature stays
-  disabled when `console_url` is empty and passes only the persisted guest
-  identity; console tickets and upstream credentials never enter NetBox.
-- **Safer inventory and credentials.** Migrations `0083` through `0087` make
-  OpenBao the default credential source, add the console URL, and retire stale
-  reflection custom fields only after repeated value checks. Node SSH secrets
-  may fall back to the matching credential service's DeviceService, and detail pages show
-  authoritative Proxmox and synchronization state.
-- **Auditable operations.** The release includes the read-only sync-jobs API,
-  explicit Packer template-build authorization, Proxmox tag exposure, and
-  guarded repair/status surfaces.
-- **Identity-verified publication.** Manual publication binds validation,
-  sanitized passive builds, Gitea artifacts, and protected GitHub tags to the
-  exact raw tag object and peeled source commit. Registry bytes are downloaded
-  and verified, credentials are isolated, and interrupted publication has a
-  bounded byte-identical resume path.
+- **NetBox 4.7.0 GA certification.** Real-Django and Docker matrices retain
+  the 4.5/4.6 backward-compatibility cells and add the exact v4.7.0 GA source.
+- **Compatibility fixes.** Settings serialization, storage capacity, detail
+  templates, InfluxDB metrics, sync-state models, and empty encryption-key
+  recovery follow current NetBox/Django behavior.
+- **Immutable staged release.** The target workflow emits exactly six
+  credential-free data files: one wheel, one sdist, `release-manifest.json`,
+  `release-request.json`, `runner-completion-attestation.json`, and
+  `runner-completion-attestation.sig`. The locked control plane verifies the
+  supervisor completion signature and publishes those exact wheel/sdist bytes
+  before they progress through TestPyPI, production, and PyPI without
+  rebuilding.
 
-Full notes: [Release Notes - v0.0.26](docs/release-notes/version-0.0.26.md).
+Full notes: [Release Notes - v0.0.26.post1](docs/release-notes/version-0.0.26.post1.md).
 
 ## What's New in v0.0.23.post1
 
@@ -363,7 +358,7 @@ Full notes: [Release Notes — v0.0.18](https://emersonfelipesp.github.io/netbox
 
 | NetBox | netbox-proxbox | proxbox-api | proxbox-api internal netbox-sdk (REST only) | proxmox-sdk |
 |--------|----------------|-------------|------------|-------------|
-| 4.5.8-4.6.x; exact canonical 4.7.0-beta2 | v0.0.26 | v0.0.20 | v0.0.10 | v0.0.13 |
+| 4.5.8-4.7.0 GA | v0.0.26.post1 | v0.0.20 | v0.0.10 | v0.0.13 |
 | >=4.5.8 | v0.0.23.post1 | guest-VM-interface writer build / next release | v0.0.10 | v0.0.12 |
 | >=4.5.8 | v0.0.23 | guest-VM-interface writer build / next release | v0.0.10 | v0.0.12 |
 | >=4.5.8 | v0.0.22 | v0.0.19.post5 | v0.0.10 | v0.0.12 |
@@ -387,18 +382,19 @@ across the whole Proxbox plugin stack:
 
 | Tier | NetBox range | What it means |
 |---|---|---|
-| **Stable** | `4.5.8` – `4.6.99` | Admitted silently. Directly exercised in CI at v4.5.8, v4.5.10, v4.6.0 and v4.6.6. |
-| **Experimental** | exact canonical `4.7.0-beta2` | Loads and runs normally for evaluation; the upstream pre-release is not production-certified, so the plugin warns once at startup. |
+| **Stable** | `4.5.8` – `4.7.0` | Admitted silently. CI exercises v4.5.8, v4.5.10, v4.6.0, v4.6.6, and v4.7.0 GA. |
+| **Experimental** | NetBox 4.7.x pre-release builds within the declared loader range | Loads for evaluation and warns once at startup; this is not a GA support promise. |
 
-The exact beta2 support needs **no configuration at all** — no setting, opt-in
-flag, or install step. On that canonical release you will see one warning per
-plugin, from `manage.py check` and in the startup log:
+The GA support needs **no configuration at all** — no setting, opt-in flag, or
+install step. NetBox 4.7.x pre-release builds within the declared loader range
+are evaluation-only and emit an advisory warning. The existing 4.5/4.6 installs use the same package and can be
+upgraded to NetBox 4.7 without changing plugin configuration or database state.
 
 ```
 WARNINGS:
 ?: (netbox_proxbox.W001) Proxbox is running on NetBox 4.7.0-beta2, which is
    supported on an experimental basis only. Certified support covers NetBox
-   4.5.8 through 4.6.99. NetBox 4.7.0-beta2 is also an upstream pre-release:
+   4.5.8 through 4.7.0. NetBox 4.7.0-beta2 is also an upstream pre-release:
    upstream does not support pre-releases in production and does not guarantee
    an upgrade path from a pre-release to the final release. Use it for
    evaluation on disposable data only.
@@ -432,12 +428,9 @@ That silences both the system check and the startup log line.
 > It only applies through NetBox's `local_settings.py` hatch, which upstream
 > labels unsupported. Use the `PLUGINS_CONFIG` key above.
 
-NetBox releases below `4.5.8` and above bare `4.7.0` are refused by NetBox's
-stock plugin version gate. Because NetBox passes the same bare `4.7.0` for
-beta2, later prereleases, and GA, this plugin additionally reads canonical
-`release.yaml`: only `version: "4.7.0"` plus `designation: "beta2"` is admitted.
-An unreviewed 4.7 identity raises `IncompatiblePluginError`; NetBox warns, omits
-the plugin from `registry["plugins"]["installed"]`, and continues startup.
+NetBox releases below `4.5.8` and above `4.7.0` are refused by NetBox's stock
+plugin version gate. Pre-release builds receive an advisory warning; exact GA
+source and dependency provenance are verified by the CI matrix.
 
 > **Upgrading to NetBox 4.7 means upgrading the whole plugin stack.** A
 > Proxbox-family plugin left at the old `4.6.99` ceiling does not stop NetBox
@@ -448,20 +441,15 @@ the plugin from `registry["plugins"]["installed"]`, and continues startup.
 > `netbox-pbs` and `netbox-pdm` together, then confirm each is registered with
 > `apps.is_installed(...)`. On 4.5.8–4.6.x, mixed versions remain fine.
 
-> **On beta version strings.** NetBox splits its release identity: at tag
-> `v4.7.0-beta2`, canonical `release.yaml` carries `version: "4.7.0"` with
-> `designation: "beta2"`, and NetBox passes only bare `"4.7.0"` to the stock
-> plugin gate. The declared ceiling is therefore `4.7.0`, with a second
-> fail-closed canonical identity check. Optional `local/release.yaml` may add
-> only informational `build`; it cannot override version or designation.
+> **On upgrades.** Keep all installed Proxbox-family plugins on GA-capable
+> releases before upgrading NetBox. The 4.5.8 floor remains supported, while
+> the declared ceiling is now `4.7.0`.
 
 ## Requirements
 
-- NetBox 4.5.8 through 4.6.x (stable), or exact canonical 4.7.0-beta2
-  (experimental evaluation only — see above)
+- NetBox 4.5.8 through 4.7.0, including official v4.7.0 GA
 - Verified with NetBox v4.5.8 through v4.5.10, v4.6.0 through v4.6.6, and
-  exact v4.7.0-beta2 commit
-  `aa1d49d0f5021a28e6efc2d0364b84c5bcec7137` (experimental tier); the source
+  exact v4.7.0 commit `5f06007e4c9bacc93ce17c1e645fc1143d60df3d`; the source
   matrix verifies release metadata and installs commit-bound, hash-checked
   Python 3.12/Linux dependency locks
 - Python 3.12+

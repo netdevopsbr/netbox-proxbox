@@ -56,7 +56,7 @@ the small set of variables below — everything else lives in the env file.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `NETBOX_IMAGE` | `netboxcommunity/netbox:v4.6.6` | Image tag to run. Use the **same tag** as your long-lived stack so the migrations and schema match. |
+| `NETBOX_IMAGE` | `netboxcommunity/netbox:v4.7.0-5.1.0@sha256:73a54ff279461170032b59a57a1930929965e3ba15c195af59f4b5f6d39a84a9` | Image reference to run. Keep the reviewed digest, or supply another digest-pinned image whose migrations and schema match your long-lived stack. |
 | `NETBOX_ENV_FILE` | `./env/netbox.env` | env file consumed by the container. Set to a non-existent path (or `/dev/null`) to disable env_file loading entirely and pass everything via `-e` on the command line. |
 | `NETBOX_NETWORK` | `netbox-docker_default` | External Docker network that already hosts your NetBox, PostgreSQL, and Redis. Matches netbox-docker's compose-generated network name. |
 | `NETBOX_PROXBOX_PIP_SPEC` | `netbox-proxbox` | PEP 508 spec passed to `uv pip install`. Pin a version (e.g. `netbox-proxbox==0.0.15`) to make scheduled runs reproducible. |

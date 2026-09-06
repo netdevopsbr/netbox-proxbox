@@ -9,19 +9,21 @@ Proxbox is a NetBox plugin that integrates Proxmox with NetBox through a separat
 
 | Tier | NetBox range | Behaviour |
 |---|---|---|
-| Stable | `4.5.8` - `4.6.99` | Admitted silently. Exercised in CI at v4.5.8, v4.5.10, v4.6.0 and v4.6.6. |
-| Experimental | exact canonical `4.7.0-beta2` | Loads for evaluation with no configuration change; warns once via system check `netbox_proxbox.W001`. |
+| Stable | `4.5.8` - `4.7.0` | Admitted silently. Exercised in CI at v4.5.8, v4.5.10, v4.6.0, v4.6.6, and v4.7.0 GA. |
+| Experimental | NetBox 4.7.x pre-release builds within the declared loader range | Loads for evaluation and warns via system check `netbox_proxbox.W001`; not a GA support promise. |
 
-Exact beta2 support requires no setting, opt-in flag, or install step. Its
-maturity notice is silenced with the `silence_netbox_compatibility_warning` key
-in the plugin's `PLUGINS_CONFIG` entry. Other 4.7 identities fail closed: NetBox
-warns, omits the plugin, and continues startup.
+GA support requires no setting, opt-in flag, or install step. NetBox 4.7.x
+pre-release builds within the declared loader range load for evaluation and emit
+an advisory warning; the notice is
+silenced with the `silence_netbox_compatibility_warning` key in the plugin's
+`PLUGINS_CONFIG` entry. Versions outside the declared support bands fail closed:
+NetBox warns, omits the plugin, and continues startup.
 
 ## Compatibility
 
 | NetBox   | netbox-proxbox | proxbox-api | proxbox-api internal netbox-sdk (REST only) | proxmox-sdk    |
 |----------|----------------|-------------|----------------|----------------|
-| 4.5.8-4.6.x; exact canonical 4.7.0-beta2 | v0.0.26 | v0.0.20 | v0.0.10 | v0.0.13 |
+| 4.5.8-4.7.0 GA | v0.0.26.post1 | v0.0.20 | v0.0.10 | v0.0.13 |
 | >=4.5.8  | v0.0.23.post1 | guest-VM-interface writer build / next release | v0.0.10 | v0.0.12 |
 | >=4.5.8  | v0.0.23 | guest-VM-interface writer build / next release | v0.0.10 | v0.0.12 |
 | >=4.5.8  | v0.0.22 | v0.0.19.post5 | v0.0.10 | v0.0.12 |
@@ -51,18 +53,17 @@ and WebSocket.
 
 The current repository code declares support for:
 
-- NetBox `4.5.8` through `4.5.10`, and `4.6.x`
-- Plugin version `0.0.26` in source
+- NetBox `4.5.8` through `4.7.0`, including official `v4.7.0` GA
+- Plugin version `0.0.26.post1` in source
 
 That support comes directly from the plugin config in this repository:
 
 - `min_version = "4.5.8"`
-- `max_version = "4.7.0"` (numeric ceiling; canonical release metadata must
-  additionally identify exact `4.7.0-beta2`; `4.5.8`-`4.6.99` is stable)
+- `max_version = "4.7.0"` (numeric ceiling for the certified GA tier)
 
 This compatibility line is validated against NetBox `v4.5.8` through `v4.5.10`
-and `v4.6.0` through `v4.6.6` in the stable tier, plus evaluation-only
-`v4.7.0-beta2` at exact commit `aa1d49d0f5021a28e6efc2d0364b84c5bcec7137`.
+and `v4.6.0` through `v4.6.6` in the stable tier, plus official `v4.7.0` GA at
+exact commit `5f06007e4c9bacc93ce17c1e645fc1143d60df3d`.
 The source matrix verifies each checkout's commit and release metadata before
 installing its checksum-bound, artifact-hashed Python 3.12/Linux dependency
 lock.
@@ -71,13 +72,15 @@ methods, tenant-scoped endpoint allowlists, bulk endpoint enablement, PDM
 endpoint sync, SDN inventory, Firecracker serializer hardening, dual VM
 interface sync, and the all-endpoint `enabled=False` no-connection guard.
 
-Current backend-runtime pairing: netbox-proxbox 0.0.26 <-> proxbox-api 0.0.20 <-> proxmox-sdk 0.0.13 <-> netbox-sdk 0.0.10. This netbox-sdk version is proxbox-api's REST dependency only and does not provide the semantic MCP bridge.
+Current backend-runtime pairing: netbox-proxbox 0.0.26.post1 <-> proxbox-api 0.0.20 <-> proxmox-sdk 0.0.13 <-> netbox-sdk 0.0.10. This netbox-sdk version is proxbox-api's REST dependency only and does not provide the semantic MCP bridge.
 
-The `0.0.26` release adds permission-gated browser-console handoff, guarded
-reflection-field retirement, authoritative Proxmox detail and sync state,
-OpenBao-first credentials, and resumable identity-verified publication while
-retaining the certified NetBox range and `0.0.23.post1` interface model. The
-historical rows remain documented below.
+The `0.0.26.post1` release carries the official NetBox 4.7.0 GA compatibility
+contract while
+retaining the backward-compatible 4.5/4.6 cells, package-first release
+provenance, and the compatibility/reliability fixes documented in the release
+notes while retaining bounded endpoint auto-configuration and
+credential establishment while retaining the `0.0.23.post1` interface-model
+behavior. The historical rows remain documented below.
 
 ## Important Packaging Note
 

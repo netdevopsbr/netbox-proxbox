@@ -10,12 +10,9 @@ import threading
 from netbox.plugins import PluginConfig
 
 from .compat import (
-    APPROVED_EXPERIMENTAL_NETBOX_DESIGNATION,
-    APPROVED_EXPERIMENTAL_NETBOX_VERSION,
     PLUGIN_MAX_VERSION,
     PLUGIN_MIN_VERSION,
     register_netbox_compatibility_check,
-    validate_held_netbox_release_identity,
 )
 
 
@@ -177,31 +174,27 @@ class ProxboxConfig(PluginConfig):
     name = "netbox_proxbox"
     verbose_name = "Proxbox"
     description = "Integrates Proxmox and Netbox"
-    version = "0.0.26"
+    version = "0.0.26.post1"
     author = "Emerson Felipe (@emersonfelipesp)"
     author_email = "emersonfelipe.2003@gmail.com"
-    # Sourced from .compat so the stable and held-beta contracts are declared
-    # in one place across the Proxbox plugin stack.
+    # Sourced from .compat so the backward-compatible and GA contract is
+    # declared in one place across the Proxbox plugin stack.
     min_version = PLUGIN_MIN_VERSION
     max_version = PLUGIN_MAX_VERSION
-    approved_netbox_version = APPROVED_EXPERIMENTAL_NETBOX_VERSION
-    approved_netbox_designation = APPROVED_EXPERIMENTAL_NETBOX_DESIGNATION
     base_url = "proxbox"
     required_settings = []
     queues = []
 
     @classmethod
     def validate(cls, user_config: dict[str, object], netbox_version: str) -> None:
-        """Apply stock bounds, then attest the held 4.7 release identity."""
+        """Apply the stock backward-compatible NetBox version bounds."""
         super().validate(user_config, netbox_version)
-        validate_held_netbox_release_identity(cls, netbox_version)
 
     def ready(self) -> None:
         """Register models, then import job modules so runners and core Job views hook in."""
         super().ready()
-        # Registered before the Pydantic guard below: an operator running on an
-        # experimental NetBox needs to be told so whether or not the optional
-        # runtime deps are installed.
+        # Register before the optional runtime dependency check so future or
+        # pre-release NetBox versions are reported independently of Pydantic.
         register_netbox_compatibility_check(self, logger)
         if not _runtime_dependencies_available():
             logger.warning(
