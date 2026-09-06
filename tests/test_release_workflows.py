@@ -1806,6 +1806,14 @@ def test_gitea_publish_uses_preprovisioned_tools_and_resumable_upload() -> None:
     validate_checkout = _step(validate, "Checkout tag")
     assert "uses" not in validate_checkout
     assert "+refs/tags/${TAG}:refs/tags/${TAG}" in validate_checkout["run"]
+    assert "test ! -e validation-source" in validate_checkout["run"]
+    assert "mkdir -m 0700 validation-source" in validate_checkout["run"]
+    assert "git -C validation-source init ." in validate_checkout["run"]
+    assert "git init ." not in validate_checkout["run"]
+    assert (
+        _step(validate, "Extract and validate version")["working-directory"]
+        == "validation-source"
+    )
     assert (
         'test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"'
         in (validate_checkout["run"])

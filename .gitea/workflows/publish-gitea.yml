@@ -60,15 +60,17 @@ jobs:
           test "${GITHUB_SERVER_URL}" = "https://git.nmulti.cloud"
           test "${GITHUB_REPOSITORY}" = "emersonfelipesp/netbox-proxbox"
           printf '%s' "${TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+|\.post[0-9]+)?$'
-          test -z "$(find . -mindepth 1 -maxdepth 1 -print -quit)"
-          git init .
-          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
-          git fetch --depth=1 --no-tags origin "+refs/tags/${TAG}:refs/tags/${TAG}"
-          git checkout --detach --force "refs/tags/${TAG}^{commit}"
-          test -z "$(git status --porcelain --untracked-files=all)"
+          test ! -e validation-source
+          mkdir -m 0700 validation-source
+          git -C validation-source init .
+          git -C validation-source remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git -C validation-source fetch --depth=1 --no-tags origin "+refs/tags/${TAG}:refs/tags/${TAG}"
+          git -C validation-source checkout --detach --force "refs/tags/${TAG}^{commit}"
+          test -z "$(git -C validation-source status --porcelain --untracked-files=all)"
 
       - id: extract
         name: Extract and validate version
+        working-directory: validation-source
         env:
           TAG: ${{ steps.resolve_tag.outputs.tag }}
         run: |
