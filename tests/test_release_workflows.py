@@ -24,6 +24,9 @@ GITEA_ARTIFACT_WORKFLOW = (
 )
 GITHUB_PUBLISH_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "publish-testpypi.yml"
 GITEA_DEPLOY_WORKFLOW = REPO_ROOT / ".gitea" / "workflows" / "deploy-production.yml"
+GITEA_CONSOLE_STACK_DEPLOY_WORKFLOW = (
+    REPO_ROOT / ".gitea" / "workflows" / "deploy-console-stack.yml"
+)
 GITEA_PROMOTE_WORKFLOW = REPO_ROOT / ".gitea" / "workflows" / "promote-final-tag.yml"
 RELEASE_ARTIFACTS_PATH = REPO_ROOT / "scripts" / "release_artifacts.py"
 # Read back from the module's own pinned origin check rather than written
@@ -632,6 +635,33 @@ def test_production_health_gate_actually_asserts_service_state() -> None:
     assert "run: /opt/nmulticloud/deploy/bin/status-app netbox\n" not in gate
     assert "[=,]netbox\\.service:active" in gate
     assert "[=,]netbox-rq\\.service:active" in gate
+
+
+def test_console_stack_recovery_deploy_is_fixed_and_input_free() -> None:
+    workflow = _read(GITEA_CONSOLE_STACK_DEPLOY_WORKFLOW)
+    parsed = yaml.safe_load(workflow)
+
+    assert parsed["on"] == {"workflow_dispatch": None}
+    job = parsed["jobs"]["deploy"]
+    assert job["runs-on"] == "prod-deploy"
+    assert set(job["env"]) == {
+        "BACKEND_COMMIT",
+        "DEPLOY_APP_COMMAND",
+        "NMS_COMMIT",
+        "NMS_MCP_COMMIT",
+        "STATUS_APP_COMMAND",
+    }
+    assert all(
+        re.fullmatch(r"[a-f0-9]{40}", job["env"][name])
+        for name in ("BACKEND_COMMIT", "NMS_MCP_COMMIT", "NMS_COMMIT")
+    )
+    assert 'test "$GITHUB_REPOSITORY" = emersonfelipesp/netbox-proxbox' in workflow
+    assert 'test "$GITHUB_REF" = refs/heads/main' in workflow
+    assert 'test "$GITHUB_ACTOR" = emersonfelipesp' in workflow
+    assert workflow.index('nms-backend "$BACKEND_COMMIT"') < workflow.index(
+        'nms-mcp "$NMS_MCP_COMMIT"'
+    ) < workflow.index('nms "$NMS_COMMIT"')
+    assert "workflow_dispatch:\n    inputs:" not in workflow
 
 
 def test_claim_ignores_ambient_curl_configuration() -> None:
