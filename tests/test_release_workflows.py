@@ -665,6 +665,7 @@ def test_console_stack_recovery_deploy_is_fixed_and_input_free() -> None:
     assert "--network=none --read-only" in workflow
     assert "--cap-drop=ALL --security-opt=no-new-privileges:true" in workflow
     assert "--user=65534:65534" in workflow
+    assert "--env=PYTHONPATH=/app" in workflow
     assert "trap 'docker rm -f" in workflow
 
 
