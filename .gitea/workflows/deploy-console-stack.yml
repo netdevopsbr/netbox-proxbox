@@ -101,6 +101,7 @@ jobs:
             --memory=1g --cpus=1 --user=65534:65534 \
             --tmpfs=/tmp:rw,noexec,nosuid,nodev,size=64m \
             --env=PYTHONDONTWRITEBYTECODE=1 --env=PYTHONPATH=/app \
+            --env=XDG_CONFIG_HOME=/tmp \
             --env="NMS_BACKEND_COMMIT=$BACKEND_COMMIT" \
             --entrypoint=python "$image" -P -s -c \
             "import json; from automation.main import app; print(json.dumps(app.openapi(), ensure_ascii=False, separators=(',', ':')))" \
