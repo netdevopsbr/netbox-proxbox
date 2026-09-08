@@ -85,3 +85,22 @@ jobs:
           "$STATUS_APP_COMMAND" nms-backend || true
           "$STATUS_APP_COMMAND" nms-mcp || true
           "$STATUS_APP_COMMAND" nms || true
+
+      - name: Report the bounded backend candidate diagnostic after failure
+        if: failure()
+        run: |
+          set -u
+          image="nmc/nms-backend:$BACKEND_COMMIT"
+          container="nms-backend-contract-diagnostic-${GITHUB_RUN_ID}"
+          printf '%s' "$GITHUB_RUN_ID" | grep -Eq '^[1-9][0-9]*$' || exit 0
+          docker image inspect "$image" >/dev/null 2>&1 || exit 0
+          docker rm -f "$container" >/dev/null 2>&1 || true
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+          docker run --name="$container" --pull=never --network=none --read-only \
+            --cap-drop=ALL --security-opt=no-new-privileges:true --pids-limit=256 \
+            --memory=1g --cpus=1 --user=65534:65534 \
+            --tmpfs=/tmp:rw,noexec,nosuid,nodev,size=64m \
+            --env=PYTHONDONTWRITEBYTECODE=1 --env="NMS_BACKEND_COMMIT=$BACKEND_COMMIT" \
+            --entrypoint=python "$image" -P -s -c \
+            "import json; from automation.main import app; print(json.dumps(app.openapi(), ensure_ascii=False, separators=(',', ':')))" \
+            || true

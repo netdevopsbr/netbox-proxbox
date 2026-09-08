@@ -662,6 +662,10 @@ def test_console_stack_recovery_deploy_is_fixed_and_input_free() -> None:
         'nms-mcp "$NMS_MCP_COMMIT"'
     ) < workflow.index('nms "$NMS_COMMIT"')
     assert "workflow_dispatch:\n    inputs:" not in workflow
+    assert "--network=none --read-only" in workflow
+    assert "--cap-drop=ALL --security-opt=no-new-privileges:true" in workflow
+    assert "--user=65534:65534" in workflow
+    assert "trap 'docker rm -f" in workflow
 
 
 def test_claim_ignores_ambient_curl_configuration() -> None:
