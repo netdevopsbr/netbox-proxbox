@@ -35,14 +35,6 @@ jobs:
           test -x "$DEPLOY_APP_COMMAND"
           test -x "$STATUS_APP_COMMAND"
 
-      - name: Deploy the exact backend revision
-        run: |
-          set -euo pipefail
-          "$DEPLOY_APP_COMMAND" nms-backend "$BACKEND_COMMIT"
-          report="$($STATUS_APP_COMMAND nms-backend)"
-          printf '%s\n' "$report"
-          printf '%s\n' "$report" | grep -Fx "current=$BACKEND_COMMIT"
-
       - name: Deploy the exact MCP companion revision
         run: |
           set -euo pipefail
@@ -50,6 +42,14 @@ jobs:
           report="$($STATUS_APP_COMMAND nms-mcp)"
           printf '%s\n' "$report"
           printf '%s\n' "$report" | grep -Fx "current=$NMS_MCP_COMMIT"
+
+      - name: Deploy the exact backend revision
+        run: |
+          set -euo pipefail
+          "$DEPLOY_APP_COMMAND" nms-backend "$BACKEND_COMMIT"
+          report="$($STATUS_APP_COMMAND nms-backend)"
+          printf '%s\n' "$report"
+          printf '%s\n' "$report" | grep -Fx "current=$BACKEND_COMMIT"
 
       - name: Deploy the exact NMS frontend revision
         run: |
