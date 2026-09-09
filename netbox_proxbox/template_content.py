@@ -99,17 +99,11 @@ def _console_base_url() -> str | None:
 
 
 def _synced_console_vm_type(vm: VirtualMachine) -> str | None:
-    """Return a console type only for an authoritative synchronized guest record."""
+    """Return the console type recorded by an authoritative guest sync."""
     state = getattr(vm, "proxbox_sync_state", None)
     vmid = getattr(state, "proxmox_vm_id", None)
     vm_type = str(getattr(state, "proxmox_vm_type", "") or "").strip().lower()
-    endpoint = getattr(state, "endpoint", None)
-    if (
-        not isinstance(vmid, int)
-        or vmid < 1
-        or endpoint is None
-        or not bool(getattr(endpoint, "enabled", True))
-    ):
+    if not isinstance(vmid, int) or vmid < 1:
         return None
     return vm_type if vm_type in {"qemu", "lxc"} else None
 

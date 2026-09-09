@@ -468,15 +468,21 @@ def test_console_button_hides_without_synchronized_guest(
     assert extension.render_calls == []
 
 
-def test_console_button_hides_when_sidecar_endpoint_is_disabled(
+@pytest.mark.parametrize(
+    "endpoint",
+    [None, SimpleNamespace(pk=1, enabled=False)],
+)
+def test_console_button_defers_mutable_endpoint_policy_to_management_console(
     template_content_module,
+    endpoint,
 ):
+    """A stale endpoint relation cannot suppress the safe management handoff."""
     harness = template_content_module
     _set_console_url(harness, "https://console.example.invalid")
     vm = harness.virtual_machine()
     vm.pk = 76
     vm.proxbox_sync_state = SimpleNamespace(
-        endpoint=SimpleNamespace(pk=1, enabled=False),
+        endpoint=endpoint,
         proxmox_vm_id=100,
         proxmox_vm_type="qemu",
     )
@@ -485,8 +491,16 @@ def test_console_button_hides_when_sidecar_endpoint_is_disabled(
         _context(vm, SYNC_PERMISSION)
     )
 
-    assert extension.console_button() == ""
-    assert extension.render_calls == []
+    extension.console_button()
+
+    assert extension.render_calls[-1] == (
+        "netbox_proxbox/inc/vm_console_button.html",
+        {
+            "console_url": (
+                "https://console.example.invalid/virtualization/virtual-machines/76"
+            )
+        },
+    )
 
 
 @pytest.mark.parametrize(
@@ -500,7 +514,6 @@ def test_console_button_hides_when_sidecar_endpoint_is_disabled(
             proxmox_vm_id=100,
             proxmox_vm_type="template",
         ),
-        SimpleNamespace(endpoint=None, proxmox_vm_id=100, proxmox_vm_type="lxc"),
     ],
 )
 def test_console_button_hides_when_authoritative_sync_state_is_ineligible(
