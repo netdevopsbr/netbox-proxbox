@@ -249,6 +249,7 @@ jobs:
           .venv/bin/pytest tests/test_netbox_compat_django.py \
             tests/test_list_view_render_django.py \
             tests/test_sync_state_models.py tests/test_sync_state_contracts.py \
+            tests/test_proxmox_endpoint_allowed_tenants.py \
             tests/test_backend_key_adoption_django.py \
             tests/test_encryption_key_recovery_django.py \
             tests/test_job_stream_django.py \
@@ -263,6 +264,7 @@ jobs:
             tests/test_proxbox_job_filter_django.py \
             tests/test_sync_jobs_api_django.py \
             tests/test_vm_intent_django.py \
+            tests/test_soft_deleted_vm_purge_django.py \
             --ds=netbox.settings --reuse-db --create-db -v --no-header \
             --cov=netbox_proxbox.services.endpoint_autoconfiguration \
             --cov=netbox_proxbox.api.serializers.resource_views \
