@@ -12,10 +12,12 @@ in NetBox.
 |---|---|---|
 | Discover VMs, LXC, interfaces, IPs | **netbox-proxbox** (+ proxbox-api) | NetBox PostgreSQL |
 | Store SSH passwords and keypairs | **netbox-openbao** | OpenBao KV v2 + NetBox metadata |
-| Optional NMS/RPC mirror for passwords | **netbox-nms** | Same OpenBao material |
+| Optional vault credential isolation | **netbox-openbao-broker** | AppRole off the NetBox host |
+| Audited SSH / host procedures | **netbox-rpc** (+ rpc-backend) | Procedure catalog in NetBox |
 
 Proxbox answers *what exists*. Openbao answers *how you log in* — after the
-object exists.
+object exists. RPC answers *what automated host operations are allowed* — through
+a catalogued executor, not ad-hoc shell.
 
 !!! important "No secrets in the sync pipeline"
     Proxmox guest credentials — cloud-init passwords, hypervisor-stored root
@@ -39,23 +41,31 @@ flowchart TB
     PX --> NB
 ```
 
-### Secrets lane (netbox-openbao)
+### Secrets and automation stack
 
 ```mermaid
 flowchart TB
-    OP["Operator\nquick-add SSH on VM page"]
+    OP["Operator · nbx"]
     OB["netbox-openbao"]
-    NB[("NetBox metadata")]
+    BR["netbox-openbao-broker\noptional"]
     BAO[("OpenBao KV v2")]
+    RPC["netbox-rpc"]
+    RBE["netbox-rpc-backend"]
+    VM["VirtualMachine / host"]
 
     OP --> OB
-    OB --> NB
-    OB --> BAO
+    OB --> BR
+    OB -.-> BAO
+    BR --> BAO
+    OP --> RPC
+    RPC --> RBE
+    RBE --> OB
+    RBE --> VM
 ```
 
-The two lanes meet on the same `VirtualMachine` (or `Device`) row. Neither
-plugin imports the other; coordination is entirely through NetBox objects and
-operator workflow.
+The inventory and secrets lanes meet on the same `VirtualMachine` (or `Device`)
+row. Neither plugin imports the other; coordination is entirely through NetBox
+objects, openbao assignments, and operator workflow.
 
 ## Endpoint credentials vs guest credentials
 
@@ -83,33 +93,34 @@ credential, and quick-add on a VM does not replace endpoint API authentication.
 3. **Reveal when needed** — operators or automation with `reveal_credential`
    POST to `/api/plugins/openbao/credentials/{id}/reveal/`; material never
    appears on GET or in exports.
-
-When netbox-nms is present, password quick-add mirrors into `DeviceCredential`
-for RPC consumers.
+4. **Optional automation** — dispatch audited **netbox-rpc** procedures for
+   fixed host operations; the executor resolves credentials through the openbao
+   reveal contract.
 
 ## Installation
 
-Install both plugins in NetBox; order relative to netbox-proxbox does not
-matter for VM secrets, but proxbox must be present before sync can create VM
+Install the plugins in NetBox; proxbox must be present before sync can create VM
 rows:
 
 ```bash
-pip install netbox-proxbox netbox-openbao
+pip install netbox-proxbox netbox-openbao netbox-rpc
 ```
 
 ```python
 PLUGINS = [
     "netbox_proxbox",
     "netbox_openbao",
-    # "netbox_nms",  # optional mirror for RPC/NMS
+    "netbox_rpc",
 ]
 ```
 
-Configure OpenBao engines and policy tiers per
+Deploy **netbox-openbao-broker** when broker mode should keep AppRole material
+off the NetBox host. Configure OpenBao engines and policy tiers per
 [netbox-openbao installation](https://github.com/emersonfelipesp/netbox-openbao/blob/main/docs/installation.md).
 
 ## Further reading
 
+- [netbox-openbao: OpenBao, broker, and RPC stack](https://github.com/emersonfelipesp/netbox-openbao/blob/main/docs/architecture/openbao-broker-rpc.md)
 - [netbox-openbao: Proxmox VM secrets architecture](https://github.com/emersonfelipesp/netbox-openbao/blob/main/docs/architecture/proxmox-vm-secrets.md)
 - [netbox-openbao: Quick-add SSH](https://github.com/emersonfelipesp/netbox-openbao/blob/main/docs/quick-add-ssh.md)
 - [Interactive diagrams on emersonfelipesp.com](https://emersonfelipesp.com/netbox-openbao/proxmox-secrets)
