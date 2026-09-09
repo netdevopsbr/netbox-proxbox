@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 import logging
+import time
 from typing import TYPE_CHECKING
 
 import requests
@@ -50,6 +51,13 @@ PREFLIGHT_ENDPOINT_PUSH_BUDGET = 600.0
 # 7200 s ``PROXBOX_SYNC_JOB_TIMEOUT`` so a stuck backend still leaves three
 # quarters of the job budget for the stages that can run.
 PREFLIGHT_ENDPOINT_PUSH_HARD_CEILING = 1800.0
+
+
+def _remaining_request_timeout(timeout: float, deadline: float | None) -> float:
+    """Return a positive HTTP timeout bounded by an optional wall-clock deadline."""
+    if deadline is None:
+        return timeout
+    return max(0.001, min(timeout, deadline - time.monotonic()))
 
 
 def backend_holds_proxmox_endpoint(
@@ -174,7 +182,8 @@ def sync_proxmox_endpoint_to_backend(
     base_url: str,
     auth_headers: dict[str, str] | None = None,
     backend_verify_ssl: bool = True,
-    timeout: int = BACKEND_ENDPOINT_PUSH_TIMEOUT,
+    timeout: float = BACKEND_ENDPOINT_PUSH_TIMEOUT,
+    deadline: float | None = None,
     existing_endpoints: list[dict[str, object]] | None = None,
     allow_disabled_policy_update: bool = False,
 ) -> tuple[bool, str | None, int | None]:
@@ -196,11 +205,11 @@ def sync_proxmox_endpoint_to_backend(
         if existing_endpoints is not None:
             endpoints: object = existing_endpoints
         else:
-            list_response = requests.get(
+            list_response = requests.get(  # nosec B113
                 list_url,
                 headers=headers,
                 verify=backend_verify_ssl,
-                timeout=timeout,
+                timeout=_remaining_request_timeout(timeout, deadline),
                 allow_redirects=False,
             )
             list_response.raise_for_status()
@@ -232,7 +241,7 @@ def sync_proxmox_endpoint_to_backend(
                 if row_id is None:
                     continue
                 try:
-                    response = requests.put(
+                    response = requests.put(  # nosec B113
                         f"{list_url}/{row_id}",
                         json={
                             "enabled": False,
@@ -240,7 +249,7 @@ def sync_proxmox_endpoint_to_backend(
                         },
                         headers=headers,
                         verify=backend_verify_ssl,
-                        timeout=timeout,
+                        timeout=_remaining_request_timeout(timeout, deadline),
                         allow_redirects=False,
                     )
                     response.raise_for_status()
@@ -267,7 +276,7 @@ def sync_proxmox_endpoint_to_backend(
                 # but must never create a new backend row or push credentials.
                 _record_confirmed_packer_template_authorization(endpoint, False)
                 return True, None, None
-            response = requests.put(
+            response = requests.put(  # nosec B113
                 f"{list_url}/{existing['id']}",
                 json={
                     "enabled": False,
@@ -275,7 +284,7 @@ def sync_proxmox_endpoint_to_backend(
                 },
                 headers=headers,
                 verify=backend_verify_ssl,
-                timeout=timeout,
+                timeout=_remaining_request_timeout(timeout, deadline),
                 allow_redirects=False,
             )
             response.raise_for_status()
@@ -285,21 +294,21 @@ def sync_proxmox_endpoint_to_backend(
         payload = _proxmox_backend_payload(endpoint)
 
         if existing and existing.get("id") is not None:
-            response = requests.put(
+            response = requests.put(  # nosec B113
                 f"{list_url}/{existing['id']}",
                 json=payload,
                 headers=headers,
                 verify=backend_verify_ssl,
-                timeout=timeout,
+                timeout=_remaining_request_timeout(timeout, deadline),
                 allow_redirects=False,
             )
         else:
-            response = requests.post(
+            response = requests.post(  # nosec B113
                 list_url,
                 json=payload,
                 headers=headers,
                 verify=backend_verify_ssl,
-                timeout=timeout,
+                timeout=_remaining_request_timeout(timeout, deadline),
                 allow_redirects=False,
             )
 

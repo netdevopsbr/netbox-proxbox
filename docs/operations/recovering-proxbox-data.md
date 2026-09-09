@@ -20,7 +20,11 @@ permissions:
   `GET /extras/bootstrap-status` on load and renders the result — the backend
   status badge, any reported detail, and the raw payload. A real bootstrap
   problem is an HTTP 200 response with `ok:false`, e.g. the `Invalid v1 token`
-  warnings.
+  warnings. If the payload has `skipped:true` and
+  `reason:no_netbox_session`, proxbox-api has no **backend-owned** NetBox
+  endpoint configured. The status card now says where to configure it instead
+  of reporting an unexpected response; add the endpoint in the proxbox-api
+  admin UI, then check status again.
 - If you can run the repair but cannot view status (`core.add_job` without
   `view` on `FastAPIEndpoint`), the repair button is still available and no
   bootstrap payload is displayed.
@@ -78,6 +82,15 @@ failure to *queue* the sync, a missing permission, or an already-running repair
 sync is a hard stop. If the reconcile error persists after the sync completes,
 verify the NetBox API token configured on the **NetBox Endpoint** row is valid,
 then retry.
+
+### Missing backend NetBox endpoint
+
+If the status detail says that the ProxBox backend has no NetBox endpoint
+configured, the NetBox plugin's **FastAPI Endpoint** row is not sufficient by
+itself. proxbox-api stores its own `NetBoxEndpoint` record because the backend
+container makes the NetBox API calls. Configure that record through the
+proxbox-api admin UI, confirm the backend can reach NetBox, and use **Check
+status** again. A normal sync cannot create this backend connection implicitly.
 
 ## Notes On The Sync-State Sidecar Model
 

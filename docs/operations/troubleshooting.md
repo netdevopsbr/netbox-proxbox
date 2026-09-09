@@ -33,6 +33,57 @@ Check these processes first:
 The apply job uses the default NetBox queue. A worker that listens only to a
 custom queue will not execute intent jobs.
 
+## Proxmox Status Request Times Out
+
+Symptoms in the NetBox log include:
+
+```text
+Proxmox status request failed on attempt 3: ... Read timed out. (read timeout=5)
+Unable to hydrate Proxmox card for endpoint ...
+```
+
+The status request crosses two network directions. The **FastAPI endpoint**
+record tells the NetBox process how to reach `proxbox-api`; the **NetBox
+endpoint** record tells the `proxbox-api` process how to reach the NetBox API.
+Neither record should point at the other service's container address by
+accident.
+
+For a shared Docker Compose network, the usual shape is:
+
+| Record | Consumer | Address and port |
+| --- | --- | --- |
+| ProxBox API (FastAPI) | NetBox | `proxbox-api:8000` — the backend's container port |
+| NetBox API | proxbox-api | `netbox:8080` — the NetBox container port in the deployment's compose file |
+
+These are common Compose examples, not fixed values; use the actual internal
+listener configured by the deployment.
+
+The published host port, such as `8800:8000`, is for clients outside the
+Compose network. It is not automatically the port that another container
+should use. From the **proxbox-api container**, verify the NetBox API target;
+from the **NetBox container**, verify the FastAPI target. A successful curl or
+netcat from the host does not prove either container-to-container path.
+
+If proxbox-api logs either of these warnings:
+
+```text
+Failed to fetch ProxboxPluginSettings ... HTTP 403
+Unexpected ProxboxPluginSettings response format
+```
+
+check the backend's NetBox endpoint first. Confirm that it reaches the NetBox
+API rather than proxbox-api itself, and that its token can read the Proxbox
+plugin settings endpoint. A 403 is an authorization or target-identity
+problem; changing the Proxmox role does not fix it.
+
+If the FastAPI route is reached but `/proxmox/version` still times out, inspect
+reachability from the **proxbox-api container** to the configured Proxmox
+domain and port (normally `pve.example:8006`), then verify the Proxmox token or
+user realm, TLS setting, and `PVEAuditor` permissions. The plugin allows a
+longer backend-operation budget than its five-second lightweight connectivity
+probe so proxbox-api can return the actual upstream error. The backend log is
+the authority for the remaining Proxmox-side failure.
+
 ## Settings Problems
 
 ### Master Flag Disabled
@@ -125,6 +176,26 @@ Fix:
 3. Check proxbox-api `/health`.
 4. Check network policy between NetBox and proxbox-api.
 5. Check TLS certificates when `verify_ssl=True`.
+
+### Bootstrap status says no NetBox session
+
+Symptom:
+
+- The Proxbox sync-state repair page reports that the backend has no NetBox
+  endpoint configured.
+- The raw status payload contains `ok:false`, `skipped:true`, and
+  `reason:no_netbox_session`.
+
+Fix:
+
+1. Confirm the proxbox-api service is running.
+2. Configure proxbox-api's own `NetBoxEndpoint` through its admin UI. The
+   NetBox plugin's `FastAPIEndpoint` row configures how NetBox reaches the
+   backend; it does not configure how the backend reaches NetBox.
+3. Confirm the backend endpoint uses the NetBox service name and
+   container-internal port when both services run in one Compose project.
+4. Return to the sync-state repair page and select **Check status**.
+5. Run **Repair / Rebuild** only after the backend reports a usable session.
 
 ## Apply Job Problems
 

@@ -56,7 +56,7 @@ from django.apps import apps as django_apps  # noqa: E402
 from django.contrib.auth import get_user_model  # noqa: E402
 from django.contrib.contenttypes.models import ContentType  # noqa: E402
 from django.core.exceptions import ValidationError  # noqa: E402
-from django.db import IntegrityError, connection, transaction  # noqa: E402
+from django.db import IntegrityError, connection, models, transaction  # noqa: E402
 from django.db.migrations.executor import MigrationExecutor  # noqa: E402
 from django.test import TestCase, TransactionTestCase  # noqa: E402
 from django.test.utils import CaptureQueriesContext  # noqa: E402
@@ -140,6 +140,8 @@ MIGRATION_0066 = ("netbox_proxbox", "0066_backfill_proxbox_sync_state")
 MIGRATION_0067 = ("netbox_proxbox", "0067_sync_state_relation_fks")
 MIGRATION_0068 = ("netbox_proxbox", "0068_sync_state_relation_fk_data")
 MIGRATION_0069 = ("netbox_proxbox", "0069_sync_state_relation_fk_cleanup")
+MIGRATION_0070 = ("netbox_proxbox", "0070_proxmox_metrics_influxdb")
+MIGRATION_0071 = ("netbox_proxbox", "0071_settings_custom_fields_enabled")
 MIGRATION_0083 = ("netbox_proxbox", "0083_openbao_credential_storage")
 MIGRATION_0084 = (
     "netbox_proxbox",
@@ -2621,6 +2623,117 @@ class ProxboxSyncStateHistoricalMigrationTest(TransactionTestCase):
                 "custom_fields_enabled",
                 {field.name for field in RestoredSettings._meta.get_fields()},
             )
+        finally:
+            self._restore_current_leaf()
+
+    @staticmethod
+    def _settings_columns() -> set[str]:
+        with connection.cursor() as cursor:
+            return {
+                description.name
+                for description in connection.introspection.get_table_description(
+                    cursor,
+                    "netbox_proxbox_proxboxpluginsettings",
+                )
+            }
+
+    def test_settings_field_preserves_partial_column_on_forward_and_rollback(
+        self,
+    ) -> None:
+        """A pre-existing column and its value survive the idempotent path."""
+        try:
+            apps_0070 = self._migrate_to(MIGRATION_0070)
+            Settings0070 = apps_0070.get_model(
+                "netbox_proxbox", "ProxboxPluginSettings"
+            )
+            self.assertNotIn(
+                "custom_fields_enabled",
+                {field.name for field in Settings0070._meta.get_fields()},
+            )
+            legacy_field = models.BooleanField(default=False)
+            legacy_field.set_attributes_from_name("custom_fields_enabled")
+            with connection.schema_editor() as schema_editor:
+                schema_editor.add_field(Settings0070, legacy_field)
+            settings = Settings0070.objects.create()
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE netbox_proxbox_proxboxpluginsettings "
+                    "SET custom_fields_enabled = TRUE WHERE id = %s",
+                    [settings.pk],
+                )
+
+            apps_0071 = self._migrate_to(MIGRATION_0071)
+            Settings0071 = apps_0071.get_model(
+                "netbox_proxbox", "ProxboxPluginSettings"
+            )
+            self.assertIn(
+                "custom_fields_enabled",
+                {field.name for field in Settings0071._meta.get_fields()},
+            )
+            self.assertIn("custom_fields_enabled", self._settings_columns())
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT custom_fields_enabled "
+                    "FROM netbox_proxbox_proxboxpluginsettings WHERE id = %s",
+                    [settings.pk],
+                )
+                self.assertTrue(cursor.fetchone()[0])
+
+            rolled_back_apps = self._migrate_to(MIGRATION_0070)
+            RolledBackSettings = rolled_back_apps.get_model(
+                "netbox_proxbox", "ProxboxPluginSettings"
+            )
+            self.assertNotIn(
+                "custom_fields_enabled",
+                {field.name for field in RolledBackSettings._meta.get_fields()},
+            )
+            self.assertIn("custom_fields_enabled", self._settings_columns())
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT custom_fields_enabled "
+                    "FROM netbox_proxbox_proxboxpluginsettings WHERE id = %s",
+                    [settings.pk],
+                )
+                self.assertTrue(cursor.fetchone()[0])
+        finally:
+            self._restore_current_leaf()
+
+    def test_retired_settings_field_supports_clean_add_and_explicit_removal(
+        self,
+    ) -> None:
+        """Exercise the missing-column path through Django's real executor."""
+        try:
+            apps_0071 = self._migrate_to(MIGRATION_0071)
+            Settings0071 = apps_0071.get_model(
+                "netbox_proxbox", "ProxboxPluginSettings"
+            )
+            self._migrate_to(MIGRATION_0070)
+            with connection.schema_editor() as schema_editor:
+                schema_editor.remove_field(
+                    Settings0071,
+                    Settings0071._meta.get_field("custom_fields_enabled"),
+                )
+            self.assertNotIn("custom_fields_enabled", self._settings_columns())
+
+            clean_apps_0071 = self._migrate_to(MIGRATION_0071)
+            CleanSettings0071 = clean_apps_0071.get_model(
+                "netbox_proxbox", "ProxboxPluginSettings"
+            )
+            self.assertIn(
+                "custom_fields_enabled",
+                {field.name for field in CleanSettings0071._meta.get_fields()},
+            )
+            self.assertIn("custom_fields_enabled", self._settings_columns())
+
+            apps_0085 = self._migrate_to(MIGRATION_0084)
+            Settings0085 = apps_0085.get_model(
+                "netbox_proxbox", "ProxboxPluginSettings"
+            )
+            self.assertNotIn(
+                "custom_fields_enabled",
+                {field.name for field in Settings0085._meta.get_fields()},
+            )
+            self.assertNotIn("custom_fields_enabled", self._settings_columns())
         finally:
             self._restore_current_leaf()
 

@@ -582,6 +582,64 @@ def test_bootstrap_status_payload_inner_backend_failure_surfaces_detail(monkeypa
     assert payload["payload"] == {"ok": False, "detail": "bootstrap failed"}
 
 
+def test_bootstrap_status_payload_no_netbox_session_is_actionable(monkeypatch):
+    """The backend reason identifies configuration, not a malformed response."""
+    module = load_plugin_module(
+        "netbox_proxbox.views.sync_state_repair", monkeypatch=monkeypatch
+    )
+    request = SimpleNamespace(user=SimpleNamespace(has_perm=lambda perm: True))
+
+    payload, status = module.build_bootstrap_status_payload(
+        request,
+        fetch_status=lambda: (
+            {
+                "ok": True,
+                "response": {
+                    "ok": False,
+                    "skipped": True,
+                    "reason": "no_netbox_session",
+                    "warnings": [],
+                    "created": [],
+                    "patched": [],
+                    "unchanged": [],
+                },
+            },
+            200,
+        ),
+    )
+
+    assert status == 200
+    assert payload["ok"] is False
+    assert payload["http_status"] == 200
+    assert payload["detail"] == (
+        "ProxBox backend has no NetBox endpoint configured. "
+        "Add one in the proxbox-api admin UI, then check status again."
+    )
+    assert payload["payload"]["reason"] == "no_netbox_session"
+
+
+def test_bootstrap_status_payload_direct_no_netbox_session_is_actionable(monkeypatch):
+    """The actionable reason also survives a direct backend response body."""
+    module = load_plugin_module(
+        "netbox_proxbox.views.sync_state_repair", monkeypatch=monkeypatch
+    )
+    request = SimpleNamespace(user=SimpleNamespace(has_perm=lambda perm: True))
+
+    payload, status = module.build_bootstrap_status_payload(
+        request,
+        fetch_status=lambda: (
+            {"ok": False, "skipped": True, "reason": "no_netbox_session"},
+            200,
+        ),
+    )
+
+    assert status == 200
+    assert payload["detail"] == (
+        "ProxBox backend has no NetBox endpoint configured. "
+        "Add one in the proxbox-api admin UI, then check status again."
+    )
+
+
 def test_bootstrap_status_context_defers_backend_fetch(monkeypatch):
     module = load_plugin_module(
         "netbox_proxbox.views.sync_state_repair", monkeypatch=monkeypatch

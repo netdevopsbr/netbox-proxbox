@@ -345,7 +345,10 @@ material through the credential accessors, still subject to the endpoint `access
   (`GET /extras/bootstrap-status`, gated by `view` on `FastAPIEndpoint`) on page
   load and flags a genuine backend-reported problem (`ok:false` with
   `http_status == 200`, e.g. the "Invalid v1 token" bootstrap warnings); a
-  healthy or unreachable/unconfigured backend is not a needs-attention state. A
+  healthy or unreachable/unconfigured backend is not a needs-attention state.
+  When the backend reports `reason=no_netbox_session`, the status detail tells
+  the operator to configure proxbox-api's own `NetBoxEndpoint` in its admin UI;
+  the plugin's `FastAPIEndpoint` row only configures NetBox-to-backend access. A
   **repair-only** user (has `core.add_job` but not `view` on `FastAPIEndpoint`)
   keeps the repair affordance with no bootstrap payload exposed. Included on any
   other page the card keeps its original hidden-until-needed behaviour, guarded

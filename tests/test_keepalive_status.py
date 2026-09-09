@@ -635,6 +635,112 @@ def test_proxmox_status_uses_backend_endpoint_id_query_when_domain_available(
     ]
 
 
+def test_proxmox_status_uses_backend_operation_timeout_for_slow_backend(
+    monkeypatch,
+    fastapi_endpoint,
+    proxmox_endpoint,
+):
+    load_plugin_module(
+        "netbox_proxbox.views.keepalive_status",
+        monkeypatch=monkeypatch,
+        fastapi_endpoint=fastapi_endpoint,
+        proxmox_endpoint=proxmox_endpoint,
+    )
+    ss = _service_status_module()
+    monkeypatch.setattr(ss.time, "monotonic", lambda: 1000.0)
+    captured: dict[str, object] = {}
+
+    def fake_sync(*args, **kwargs):
+        captured["sync_timeout"] = kwargs["timeout"]
+        return True, None, None
+
+    def fake_resolve(*args, **kwargs):
+        captured["resolve_timeout"] = kwargs["timeout"]
+        return 11, None
+
+    monkeypatch.setattr(ss, "sync_proxmox_endpoint_to_backend", fake_sync)
+    monkeypatch.setattr(ss, "resolve_backend_endpoint_id", fake_resolve)
+    monkeypatch.setattr(
+        ss, "_maybe_update_proxmox_endpoint_mode", lambda **kwargs: None
+    )
+
+    def fake_get(
+        url, verify=True, timeout=None, params=None, headers=None, allow_redirects=True
+    ):
+        captured["version_timeout"] = timeout
+        return ResponseStub([{"pve01": {"version": "8.3.0"}}])
+
+    monkeypatch.setattr(ss.requests, "get", fake_get)
+
+    status, details = ss.ServiceStatus().proxmox_status(
+        1,
+        "https://backend.example.invalid:8800",
+        auth_headers={"Authorization": "Bearer backend-token"},
+        backend_verify_ssl=True,
+    )
+
+    assert status == "success"
+    assert details["api_access"] == "success"
+    expected_timeout = ss.ServiceStatus.backend_status_timeout
+    assert captured == {
+        "sync_timeout": expected_timeout,
+        "resolve_timeout": expected_timeout,
+        "version_timeout": expected_timeout,
+    }
+
+
+def test_proxmox_status_bounds_slow_version_retries_to_one_operation_budget(
+    monkeypatch,
+    fastapi_endpoint,
+    proxmox_endpoint,
+):
+    load_plugin_module(
+        "netbox_proxbox.views.keepalive_status",
+        monkeypatch=monkeypatch,
+        fastapi_endpoint=fastapi_endpoint,
+        proxmox_endpoint=proxmox_endpoint,
+    )
+    ss = _service_status_module()
+    clock = {"now": 1000.0}
+    calls: list[float] = []
+
+    monkeypatch.setattr(ss.time, "monotonic", lambda: clock["now"])
+    monkeypatch.setattr(
+        ss,
+        "sync_proxmox_endpoint_to_backend",
+        lambda *args, **kwargs: (True, None, None),
+    )
+    monkeypatch.setattr(
+        ss,
+        "resolve_backend_endpoint_id",
+        lambda *args, **kwargs: (11, None),
+    )
+    monkeypatch.setattr(
+        ss, "_maybe_update_proxmox_endpoint_mode", lambda **kwargs: None
+    )
+    monkeypatch.setattr(ss.time, "sleep", lambda seconds: None)
+
+    def slow_get(
+        url, verify=True, timeout=None, params=None, headers=None, allow_redirects=True
+    ):
+        calls.append(timeout)
+        clock["now"] += timeout
+        raise requests.exceptions.ReadTimeout("backend remained slow")
+
+    monkeypatch.setattr(ss.requests, "get", slow_get)
+
+    status, details = ss.ServiceStatus().proxmox_status(
+        1,
+        "https://backend.example.invalid:8800",
+        auth_headers={"Authorization": "Bearer backend-token"},
+        backend_verify_ssl=True,
+    )
+
+    assert status == "error"
+    assert details["api_access"] == "error"
+    assert calls == [ss.ServiceStatus.backend_status_timeout]
+
+
 def test_proxmox_status_skips_disabled_endpoint_without_backend_calls(
     monkeypatch,
     fastapi_endpoint,

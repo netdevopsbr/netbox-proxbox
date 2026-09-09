@@ -512,6 +512,39 @@ def test_duplicate_revocation_attempts_later_rows_after_first_failure(monkeypatc
     assert [url.rsplit("/", 1)[-1] for url, _payload in calls] == ["17", "18"]
 
 
+def test_duplicate_revocations_use_remaining_deadline_timeout(monkeypatch):
+    endpoint = _endpoint(3, "Renamed PVE")
+    backend_sync = _load_backend_sync_module(
+        monkeypatch,
+        endpoints_payload=[
+            _backend_row(
+                17, _endpoint(3, "Old PVE"), allow_packer_template_builds=True
+            ),
+            _backend_row(18, endpoint, allow_packer_template_builds=True),
+        ],
+    )
+    clock = {"now": 1000.0}
+    calls = []
+    monkeypatch.setattr(backend_sync.time, "monotonic", lambda: clock["now"])
+
+    def _put(url, **kwargs):
+        calls.append(kwargs["timeout"])
+        clock["now"] += kwargs["timeout"]
+        return _FakeResponse({})
+
+    monkeypatch.setattr(backend_sync.requests, "put", _put)
+
+    result = backend_sync.sync_proxmox_endpoint_to_backend(
+        endpoint,
+        base_url="http://backend:8000",
+        timeout=60,
+        deadline=1060.0,
+    )
+
+    assert result[0] is False
+    assert calls == [60, 0.001]
+
+
 def test_resolve_backend_endpoint_id_skips_disabled_without_http(monkeypatch):
     """A disabled endpoint must not be resolved through the backend endpoint list."""
     backend_sync = _load_backend_sync_module(monkeypatch, endpoints_payload=[])

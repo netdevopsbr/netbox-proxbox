@@ -171,6 +171,7 @@ def sync_proxmox_endpoint_to_backend(
     auth_headers: dict[str, str] | None = None,
     backend_verify_ssl: bool = True,
     timeout: int = 15,
+    deadline: float | None = None,
 ) -> tuple[bool, str | None, int | None]:
     """Compatibility wrapper for callers that patch this service module symbol."""
     from netbox_proxbox.views.backend_sync import (
@@ -183,6 +184,7 @@ def sync_proxmox_endpoint_to_backend(
         auth_headers=auth_headers,
         backend_verify_ssl=backend_verify_ssl,
         timeout=timeout,
+        deadline=deadline,
     )
 
 
@@ -294,6 +296,11 @@ class ServiceStatus:
         self.connected_verify_ssl: bool = True
         self.last_error_detail: str | None = None
         self.last_error_http_status: int | None = None
+
+    @staticmethod
+    def _remaining_backend_timeout(deadline: float, timeout: float) -> float:
+        """Return a positive request timeout bounded by the operation deadline."""
+        return max(0.001, min(timeout, deadline - time.monotonic()))
 
     def _set_error(self, detail: str | None, http_status: int | None = None) -> None:
         """Record the last error message and optional HTTP status for API responses."""
@@ -749,6 +756,7 @@ class ServiceStatus:
         api_access = "error"
 
         request_headers = auth_headers or {}
+        backend_deadline = time.monotonic() + self.backend_status_timeout
 
         try:
             proxmox_service_obj = ProxmoxEndpoint.objects.get(pk=pk)
@@ -790,7 +798,10 @@ class ServiceStatus:
             base_url=base_url,
             auth_headers=request_headers,
             backend_verify_ssl=backend_verify_ssl,
-            timeout=self.request_timeout,
+            timeout=self._remaining_backend_timeout(
+                backend_deadline, self.backend_status_timeout
+            ),
+            deadline=backend_deadline,
         )
         if not sync_ok:
             self._set_error(sync_detail, http_status=sync_http_status)
@@ -809,7 +820,9 @@ class ServiceStatus:
             base_url=base_url,
             auth_headers=request_headers,
             backend_verify_ssl=backend_verify_ssl,
-            timeout=self.request_timeout,
+            timeout=self._remaining_backend_timeout(
+                backend_deadline, self.backend_status_timeout
+            ),
         )
         if backend_endpoint_id is None:
             self._set_error(
@@ -829,13 +842,17 @@ class ServiceStatus:
         }
 
         for attempt in range(max_retries):
+            if time.monotonic() >= backend_deadline:
+                break
             try:
                 response = requests.get(
                     url,
                     params=query_params,
                     headers=request_headers,
                     verify=backend_verify_ssl,
-                    timeout=self.request_timeout,
+                    timeout=self._remaining_backend_timeout(  # nosec B113
+                        backend_deadline, self.backend_status_timeout
+                    ),
                     allow_redirects=False,
                 )
                 response.raise_for_status()
@@ -854,7 +871,14 @@ class ServiceStatus:
                     "Proxmox status request failed on attempt %s: %s", attempt + 1, exc
                 )
                 if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
+                    time.sleep(
+                        min(
+                            retry_delay,
+                            self._remaining_backend_timeout(
+                                backend_deadline, self.backend_status_timeout
+                            ),
+                        )
+                    )
 
         if status == "success":
             _maybe_update_proxmox_endpoint_mode(

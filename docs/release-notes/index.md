@@ -12,6 +12,12 @@ development line. The sibling plugins (`netbox-pbs`,
 `netbox-packer` is installable standalone but is prepared for certification as
 part of the same plugin family.
 
+## Unreleased Maintenance Fixes
+
+- The sync-state bootstrap status card now surfaces the actionable
+  `no_netbox_session` backend reason and explains that proxbox-api requires its
+  own NetBox endpoint configuration.
+
 ## Highlights By Version
 
 | Version | Summary |

@@ -24,7 +24,10 @@ introspect the live schema and only invoke the actual schema change when
 the target column / table is missing. The ``state_operations`` keep the
 original ``AddField`` / ``CreateModel`` verbatim so Django's project state,
 serializer parity, and ``makemigrations --check`` output match the
-non-idempotent original.
+non-idempotent original. Reverse handling is conservative and leaves
+idempotent additive columns in place because the helper cannot know whether a
+partial legacy install owned an existing column; explicit retirement
+migrations own destructive removal.
 
 Use these helpers for every new additive migration in this chain. Both
 ``0037_v0_0_15_release`` and ``0038_v0_0_16_release`` declare

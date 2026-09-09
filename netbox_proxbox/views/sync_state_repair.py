@@ -67,6 +67,11 @@ _BACKEND_FAILURE_DETAIL_MARKERS = (
     "unable",
     "unreachable",
 )
+_NO_NETBOX_SESSION_REASON = "no_netbox_session"
+_NO_NETBOX_SESSION_DETAIL = (
+    "ProxBox backend has no NetBox endpoint configured. "
+    "Add one in the proxbox-api admin UI, then check status again."
+)
 
 
 @dataclass(frozen=True)
@@ -118,11 +123,32 @@ def _inner_backend_body(payload: dict[str, object]) -> object:
 
 
 def _detail_from_mapping(mapping: dict[str, object]) -> str:
-    for key in ("detail", "error", "message", "errors", "warning", "warnings"):
+    for key in (
+        "detail",
+        "error",
+        "message",
+        "errors",
+        "warning",
+        "warnings",
+        "reason",
+    ):
         value = mapping.get(key)
         if value not in (None, "", [], {}):
             return _stringify_backend_detail(value)
     return ""
+
+
+def _actionable_backend_detail(detail: str, body: object) -> str:
+    """Replace known backend reasons with the operator action they require."""
+    if not isinstance(body, dict):
+        return detail
+    reason = body.get("reason")
+    if (
+        isinstance(reason, str)
+        and reason.strip().split(":", 1)[0] == _NO_NETBOX_SESSION_REASON
+    ):
+        return _NO_NETBOX_SESSION_DETAIL
+    return detail
 
 
 def _backend_payload_detail(payload: dict[str, object]) -> str:
@@ -130,10 +156,10 @@ def _backend_payload_detail(payload: dict[str, object]) -> str:
     if isinstance(body, dict):
         detail = _detail_from_mapping(body)
         if detail:
-            return detail
+            return _actionable_backend_detail(detail, body)
     detail = _detail_from_mapping(payload)
     if detail:
-        return detail
+        return _actionable_backend_detail(detail, payload)
     return "ProxBox backend returned an unexpected response."
 
 

@@ -12,6 +12,7 @@ Each companion plugin is a fully independent NetBox plugin package. You install 
 | [netbox-pdm](./netbox-pdm.md) | `netbox-pdm` | Proxmox Datacenter Manager — PDM endpoints and their remotes (PVE + PBS) |
 | [netbox-ceph](./netbox-ceph.md) | `netbox-ceph` | Ceph clusters — nodes, OSDs, pools, filesystems, CRUSH rules, flags, health checks |
 | [netbox-packer](./netbox-packer.md) | `netbox-packer` | HashiCorp Packer — image definitions and build execution records |
+| [netbox-openbao](./netbox-openbao.md) | `netbox-openbao` | OpenBao-backed SSH credentials for synced VMs and containers (separate plugin; not proxbox-api sync) |
 
 ## Ecosystem Architecture
 
