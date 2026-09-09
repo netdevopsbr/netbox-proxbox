@@ -43,8 +43,8 @@ from .serializers import (
     PBSEndpointSerializer,
     PDMEndpointSerializer,
     PDMRemoteSerializer,
-    ProxboxClusterGroupSyncStateSerializer,
     ProxboxBranchIntentSerializer,
+    ProxboxClusterGroupSyncStateSerializer,
     ProxboxClusterSyncStateSerializer,
     ProxboxClusterTypeSyncStateSerializer,
     ProxboxDeviceRoleSyncStateSerializer,
@@ -1055,16 +1055,37 @@ def _serialize_device(
     return result
 
 
+def _vm_proxmox_status(vm: object) -> str | None:
+    sync_state = getattr(vm, "proxbox_sync_state", None)
+    if sync_state is None:
+        return None
+    value = getattr(sync_state, "proxmox_status", "") or ""
+    return value or None
+
+
 def _serialize_vm(vm: object, request: Request) -> dict:
+    status_payload = None
+    status_value = getattr(vm, "status", None)
+    if status_value is not None:
+        status_payload = {
+            "value": status_value,
+            "label": vm.get_status_display(),
+        }
+    proxmox_status = _vm_proxmox_status(vm)
     return {
         "id": vm.pk,
         "name": str(vm.name),
         "url": request.build_absolute_uri(vm.get_absolute_url()),
+        "status": status_payload,
+        "proxmox_status": proxmox_status,
         "site": _nested(vm.site, request),
         "cluster": _nested(vm.cluster, request),
         "role": _nested(vm.role, request),
         "tenant": _nested(vm.tenant, request),
         "platform": _nested(vm.platform, request),
+        "vcpus": vm.vcpus,
+        "memory": vm.memory,
+        "disk": vm.disk,
         "interfaces": _serialize_interfaces(vm.interfaces, request),
     }
 
@@ -1505,7 +1526,9 @@ class _ProxboxVMListAPIView(APIView):
         base_qs = (
             VirtualMachine.objects.restrict(request.user, "view")
             .filter(id__in=tagged_ids)
-            .select_related(*vm_type_select_related_fields(VirtualMachine))
+            .select_related(
+                *vm_type_select_related_fields(VirtualMachine), "proxbox_sync_state"
+            )
             .prefetch_related("interfaces__ip_addresses")
         )
 

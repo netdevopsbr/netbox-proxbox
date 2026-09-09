@@ -658,9 +658,11 @@ def test_console_stack_recovery_deploy_is_fixed_and_input_free() -> None:
     assert 'test "$GITHUB_REPOSITORY" = emersonfelipesp/netbox-proxbox' in workflow
     assert 'test "$GITHUB_REF" = refs/heads/main' in workflow
     assert 'test "$GITHUB_ACTOR" = emersonfelipesp' in workflow
-    assert workflow.index('nms-backend "$BACKEND_COMMIT"') < workflow.index(
-        'nms-mcp "$NMS_MCP_COMMIT"'
-    ) < workflow.index('nms "$NMS_COMMIT"')
+    assert (
+        workflow.index('nms-backend "$BACKEND_COMMIT"')
+        < workflow.index('nms-mcp "$NMS_MCP_COMMIT"')
+        < workflow.index('nms "$NMS_COMMIT"')
+    )
     assert "workflow_dispatch:\n    inputs:" not in workflow
     assert "--network=none --read-only" in workflow
     assert "--cap-drop=ALL --security-opt=no-new-privileges:true" in workflow
