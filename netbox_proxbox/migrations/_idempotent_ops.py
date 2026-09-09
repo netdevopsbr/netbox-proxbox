@@ -18,6 +18,11 @@ target column / table is missing.  The state side keeps the original
 graph, serializer parity, and ``makemigrations --check`` output are
 identical to the non-idempotent original.
 
+The reverse side of an idempotent additive operation is deliberately
+conservative: it leaves the column in place because the helper cannot persist
+whether this migration created it or found it on a partial legacy install.
+Explicit retirement migrations own destructive column removal.
+
 Use these helpers for every additive schema operation in the
 post-``0036`` chain so the chain is safe to apply against:
 
@@ -78,14 +83,33 @@ def _live_field(model_name: str, field_name: str):
         return None
 
 
-def _add_field_if_missing(model_name: str, field_name: str) -> Callable:
+def _model_with_state_field(apps, model_name: str, state_operation):
+    state = ProjectState.from_apps(apps)
+    state_operation.state_forwards(APP_LABEL, state)
+    model = state.apps.get_model(APP_LABEL, model_name)
+    if not state_operation.preserve_default:
+        field = model._meta.get_field(state_operation.name)
+        field.default = state_operation.field.default
+    return model
+
+
+def _add_field_if_missing(
+    model_name: str, field_name: str, state_operation
+) -> Callable:
     def forwards(apps, schema_editor):
         model = apps.get_model(APP_LABEL, model_name)
-        field = _live_field(model_name, field_name)
-        if field is None:
-            return
         if not _table_exists(schema_editor, model._meta.db_table):
             return
+        try:
+            # SeparateDatabaseAndState supplies the pre-operation state to
+            # database operations. Rebuild the post-AddField state so the
+            # schema editor receives the historical field and its default.
+            model = _model_with_state_field(apps, model_name, state_operation)
+            field = model._meta.get_field(field_name)
+        except (FieldDoesNotExist, LookupError):
+            field = _live_field(model_name, field_name)
+            if field is None:
+                return
         if _column_exists(schema_editor, model._meta.db_table, field.column):
             return
         schema_editor.add_field(model, field)
@@ -95,15 +119,10 @@ def _add_field_if_missing(model_name: str, field_name: str) -> Callable:
 
 def _remove_field_if_present(model_name: str, field_name: str) -> Callable:
     def reverse(apps, schema_editor):
-        model = apps.get_model(APP_LABEL, model_name)
-        field = _live_field(model_name, field_name)
-        if field is None:
-            return
-        if not _table_exists(schema_editor, model._meta.db_table):
-            return
-        if not _column_exists(schema_editor, model._meta.db_table, field.column):
-            return
-        schema_editor.remove_field(model, field)
+        # The helper cannot distinguish a column it created from one that was
+        # already present on a partial legacy install. Leave all additive
+        # columns in place on reverse to avoid deleting data unexpectedly.
+        return
 
     return reverse
 
@@ -207,21 +226,20 @@ def add_field_idempotent(
     preserve_default: bool = True,
 ) -> migrations.SeparateDatabaseAndState:
     """``AddField`` wrapped to skip the schema change when the column exists."""
+    state_operation = migrations.AddField(
+        model_name=model_name,
+        name=field_name,
+        field=field,
+        preserve_default=preserve_default,
+    )
     return migrations.SeparateDatabaseAndState(
         database_operations=[
             migrations.RunPython(
-                _add_field_if_missing(model_name, field_name),
+                _add_field_if_missing(model_name, field_name, state_operation),
                 reverse_code=_remove_field_if_present(model_name, field_name),
             ),
         ],
-        state_operations=[
-            migrations.AddField(
-                model_name=model_name,
-                name=field_name,
-                field=field,
-                preserve_default=preserve_default,
-            ),
-        ],
+        state_operations=[state_operation],
     )
 
 

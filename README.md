@@ -240,16 +240,16 @@ other tenants.
   for troubleshooting. See
   [Recovering / Regenerating Proxbox Data](docs/operations/recovering-proxbox-data.md).
 
-## What's New in v0.0.26.post3
+## What's New in v0.0.26.post4
 
-Current backend-runtime pairing: netbox-proxbox 0.0.26.post3 <-> proxbox-api 0.0.21.post7 <-> proxmox-sdk 0.0.13 <-> netbox-sdk 0.0.10. This netbox-sdk version is proxbox-api's REST dependency only and does not provide the semantic MCP bridge.
+Current backend-runtime pairing: netbox-proxbox 0.0.26.post4 <-> proxbox-api 0.0.21.post7 <-> proxmox-sdk 0.0.13 <-> netbox-sdk 0.0.10. This netbox-sdk version is proxbox-api's REST dependency only and does not provide the semantic MCP bridge.
 
 Paired with backend: `proxbox-api 0.0.21.post7`.
 
-- **Migration-history compatibility.** Preserves the previously deployed migration-helper history so package-first production upgrades remain accepted by the host migration guard.
+- **Migration-history compatibility.** Aligns the migration helper with the currently deployed production digest so package-first production upgrades remain accepted by the host migration guard.
 - **Feature retention.** Retains the browser-console handoff, Proxmox metrics, and human-only soft-deleted VM purge surface from `0.0.26.post2`.
 
-Full notes: [Release Notes - v0.0.26.post3](docs/release-notes/version-0.0.26.post3.md).
+Full notes: [Release Notes - v0.0.26.post4](docs/release-notes/version-0.0.26.post4.md).
 
 ## What's New in v0.0.26.post2
 
@@ -370,7 +370,7 @@ Full notes: [Release Notes — v0.0.18](https://emersonfelipesp.github.io/netbox
 
 | NetBox | netbox-proxbox | proxbox-api | proxbox-api internal netbox-sdk (REST only) | proxmox-sdk |
 |--------|----------------|-------------|------------|-------------|
-| 4.5.8-4.7.0 GA | v0.0.26.post3 | v0.0.21.post7 | v0.0.10 | v0.0.13 |
+| 4.5.8-4.7.0 GA | v0.0.26.post4 | v0.0.21.post7 | v0.0.10 | v0.0.13 |
 | >=4.5.8 | v0.0.23.post1 | guest-VM-interface writer build / next release | v0.0.10 | v0.0.12 |
 | >=4.5.8 | v0.0.23 | guest-VM-interface writer build / next release | v0.0.10 | v0.0.12 |
 | >=4.5.8 | v0.0.22 | v0.0.19.post5 | v0.0.10 | v0.0.12 |
