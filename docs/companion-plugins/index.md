@@ -13,6 +13,7 @@ Each companion plugin is a fully independent NetBox plugin package. You install 
 | [netbox-ceph](./netbox-ceph.md) | `netbox-ceph` | Ceph clusters — nodes, OSDs, pools, filesystems, CRUSH rules, flags, health checks |
 | [netbox-packer](./netbox-packer.md) | `netbox-packer` | HashiCorp Packer — image definitions and build execution records |
 | [netbox-openbao](./netbox-openbao.md) | `netbox-openbao` | OpenBao-backed SSH credentials for synced VMs and containers (separate plugin; not proxbox-api sync) |
+| [netbox-rpc](./netbox-rpc.md) | `netbox-rpc` | Audited Proxmox host procedures and service monitoring through the RPC catalog |
 
 ## Ecosystem Architecture
 
