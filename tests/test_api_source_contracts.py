@@ -645,7 +645,7 @@ def test_proxmox_endpoint_export_requires_token_for_sensitive_payloads():
 
 def test_resource_vm_api_views_gate_native_vm_type_field_for_netbox_45():
     contents = VIEWS_PATH.read_text()
-    utils = UTILS_PATH.read_text()
+    utils = UTILS_PACKAGE_PATH.read_text()
     assert "get_proxbox_tagged_virtual_machines_queryset(" in contents
     assert "filter_queryset_by_proxmox_vm_type(" in utils
     assert "vm_type_select_related_fields(model_class)" in utils
