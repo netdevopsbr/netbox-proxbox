@@ -69,6 +69,9 @@ RELEASE_NOTES_026_POST4_PATH = (
 RELEASE_NOTES_026_POST5_PATH = (
     REPO_ROOT / "docs" / "release-notes" / "version-0.0.26.post5.md"
 )
+RELEASE_NOTES_026_POST6_PATH = (
+    REPO_ROOT / "docs" / "release-notes" / "version-0.0.26.post6.md"
+)
 E2E_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "e2e-docker.yml"
 PUBLISH_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "publish-testpypi.yml"
 NIGHTLY_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "nightly-contracts.yml"
@@ -81,12 +84,12 @@ CERTIFICATION_PATH = REPO_ROOT / "CERTIFICATION.md"
 DOCS_CERTIFICATION_PATH = REPO_ROOT / "docs" / "certification.md"
 APPLICATION_PACKET_PATH = REPO_ROOT / "docs" / "application-packet.md"
 
-CURRENT_PLUGIN_VERSION = "0.0.26.post5"
-CURRENT_RELEASE_VERSION = "0.0.26.post5"
-CURRENT_PACKAGE_VERSION = "0.0.26.post5"
+CURRENT_PLUGIN_VERSION = "0.0.26.post6"
+CURRENT_RELEASE_VERSION = "0.0.26.post6"
+CURRENT_PACKAGE_VERSION = "0.0.26.post6"
 CURRENT_PROXBOX_API_PAIRING_LABEL = "v0.0.21.post7"
 CURRENT_PAIRING_LINE = (
-    "Current backend-runtime pairing: netbox-proxbox 0.0.26.post5 <-> proxbox-api "
+    "Current backend-runtime pairing: netbox-proxbox 0.0.26.post6 <-> proxbox-api "
     "0.0.21.post7 <-> proxmox-sdk 0.0.13 <-> netbox-sdk 0.0.10. This netbox-sdk version is proxbox-api's REST "
     "dependency only and does not provide the semantic MCP bridge."
 )
@@ -203,7 +206,7 @@ DJANGO_TESTED_NETBOX_ROWS = (
 )
 PREVIOUS_PLUGIN_VERSION = "0.0.22"
 PREVIOUS_PROXBOX_API_VERSION = "0.0.19.post5"
-CURRENT_RELEASE_NOTES_PATH = RELEASE_NOTES_026_POST5_PATH
+CURRENT_RELEASE_NOTES_PATH = RELEASE_NOTES_026_POST6_PATH
 
 
 def _class_constants(class_name: str) -> dict[str, str]:
