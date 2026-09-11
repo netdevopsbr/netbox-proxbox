@@ -234,45 +234,6 @@ def filter_queryset_by_proxmox_vm_type(
     return queryset.filter(sync_state_filter)
 
 
-def get_proxbox_tagged_virtual_machines_queryset(
-    request: HttpRequest,
-    model_class: type[object],
-    *,
-    vm_type: str,
-    vm_type_slug: str,
-) -> object:
-    """Return proxbox-tagged VMs for a Proxmox ``vm_type``, visibility-restricted."""
-    tagged_ids = get_proxbox_tagged_object_ids(model_class)
-    if not tagged_ids:
-        return model_class.objects.none()
-    base_qs = (
-        model_class.objects.restrict(request.user, "view")
-        .filter(id__in=tagged_ids)
-        .select_related(
-            *vm_type_select_related_fields(model_class),
-            "proxbox_sync_state",
-        )
-        .prefetch_related("interfaces__ip_addresses")
-    )
-    return filter_queryset_by_proxmox_vm_type(
-        base_qs,
-        model_class,
-        vm_type=vm_type,
-        vm_type_slug=vm_type_slug,
-    ).order_by("name", "pk")
-
-
-def apply_virtual_machine_list_filters(
-    request: HttpRequest,
-    queryset: object,
-) -> tuple[object, object]:
-    """Apply NetBox's ``VirtualMachineFilterSet`` search and filters to ``queryset``."""
-    from virtualization.filtersets import VirtualMachineFilterSet
-
-    filterset = VirtualMachineFilterSet(request.GET, queryset, request=request)
-    return filterset.qs, filterset
-
-
 def get_fastapi_url(endpoint: FastAPIUrlSource) -> dict[str, object]:
     """Compute HTTP/WebSocket URLs and TLS settings for a FastAPI endpoint model.
 

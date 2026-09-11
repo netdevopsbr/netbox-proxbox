@@ -824,7 +824,7 @@ def test_lxc_and_storage_pages_are_wired_in_urls_navigation_and_templates():
 
 
 def test_vm_resource_pages_gate_native_vm_type_field_for_netbox_45():
-    utils = _read("netbox_proxbox/utils.py")
+    utils = _read("netbox_proxbox/utils/__init__.py")
     views = _read("netbox_proxbox/views/resource_list_views.py")
 
     assert "def has_virtual_machine_type_field(" in utils
@@ -932,7 +932,7 @@ def test_resource_list_views_use_netbox_pagination():
 def test_virtual_machines_list_reuses_netbox_search_and_filters():
     """The proxbox VM list must expose NetBox's standard VM filterset and form."""
     views = _read("netbox_proxbox/views/resource_list_views.py")
-    utils = _read("netbox_proxbox/utils.py")
+    utils = _read("netbox_proxbox/utils/__init__.py")
     api_views = _read("netbox_proxbox/api/views.py")
     template = _read("netbox_proxbox/templates/netbox_proxbox/virtual_machines.html")
 
