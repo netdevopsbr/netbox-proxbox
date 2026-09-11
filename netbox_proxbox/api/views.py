@@ -1536,30 +1536,20 @@ class _ProxboxVMListAPIView(APIView):
         """Retrieve the proxbox vmlist API."""
         from virtualization.models import VirtualMachine
         from netbox_proxbox.utils import (
-            filter_queryset_by_proxmox_vm_type,
-            get_proxbox_tagged_object_ids,
-            vm_type_select_related_fields,
+            apply_virtual_machine_list_filters,
+            get_proxbox_tagged_virtual_machines_queryset,
         )
 
-        tagged_ids = get_proxbox_tagged_object_ids(VirtualMachine)
-        if not tagged_ids:
-            return Response({"count": 0, "next": None, "previous": None, "results": []})
-
-        base_qs = (
-            VirtualMachine.objects.restrict(request.user, "view")
-            .filter(id__in=tagged_ids)
-            .select_related(
-                *vm_type_select_related_fields(VirtualMachine), "proxbox_sync_state"
-            )
-            .prefetch_related("interfaces__ip_addresses")
-        )
-
-        qs = filter_queryset_by_proxmox_vm_type(
-            base_qs,
+        base_qs = get_proxbox_tagged_virtual_machines_queryset(
+            request,
             VirtualMachine,
             vm_type=self.vm_type,
             vm_type_slug=self.vm_type_slug,
-        ).order_by("name")
+        )
+        if not base_qs.exists():
+            return Response({"count": 0, "next": None, "previous": None, "results": []})
+
+        qs, _filterset = apply_virtual_machine_list_filters(request, base_qs)
 
         if "limit" not in request.query_params and "offset" not in request.query_params:
             results = [_serialize_vm(vm, request) for vm in qs]

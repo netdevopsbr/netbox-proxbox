@@ -10,9 +10,11 @@ from utilities.views import ConditionalLoginRequiredMixin
 from virtualization.models import Cluster, VirtualDisk, VirtualMachine, VMInterface
 
 from netbox_proxbox.utils import (
+    apply_virtual_machine_list_filters,
     filter_queryset_by_proxmox_vm_type,
     get_fastapi_context_for_request,
     get_proxbox_tagged_object_ids,
+    get_proxbox_tagged_virtual_machines_queryset,
     vm_type_select_related_fields,
 )
 
@@ -109,54 +111,20 @@ class VirtualMachinesView(ConditionalLoginRequiredMixin, View):
 
     def get(self, request: HttpRequest) -> HttpResponse:
         """Load tagged VMs and FastAPI URL hints for the virtual machines template."""
-        from django.contrib.contenttypes.models import ContentType
-        from extras.models import Tag, TaggedItem
+        from virtualization.forms import VirtualMachineFilterForm
 
         plugin_configuration = getattr(settings, "PLUGINS_CONFIG", {})
         fastapi_info = get_fastapi_context_for_request(request)
+        filter_form = VirtualMachineFilterForm(request.GET)
 
-        proxbox_tag = Tag.objects.filter(slug="proxbox").first()
-        if not proxbox_tag:
-            return render(
-                request,
-                self.template,
-                {
-                    "configuration": plugin_configuration,
-                    "fastapi_url": fastapi_info.get("http_url", ""),
-                    "fastapi_websocket_url": fastapi_info.get("websocket_url", ""),
-                    "virtual_machines": [],
-                    "virtual_machines_total": 0,
-                    "page": None,
-                    "paginator": None,
-                },
-            )
-
-        vm_content_type = ContentType.objects.get_for_model(VirtualMachine)
-        tagged_vm_ids = list(
-            TaggedItem.objects.filter(
-                tag=proxbox_tag, content_type=vm_content_type
-            ).values_list("object_id", flat=True)
-        )
-        base_qs = (
-            VirtualMachine.objects.restrict(request.user, "view")
-            .filter(id__in=tagged_vm_ids)
-            .select_related(
-                *vm_type_select_related_fields(VirtualMachine),
-                "proxbox_sync_state",
-            )
-            .prefetch_related("interfaces__ip_addresses")
-        )
-        cluster_id = str(request.GET.get("cluster_id", "")).strip()
-        if cluster_id.isdigit() and int(cluster_id) > 0:
-            base_qs = base_qs.filter(cluster_id=int(cluster_id))
-        status = str(request.GET.get("status", "")).strip()
-        if status:
-            base_qs = base_qs.filter(status=status)
-        virtual_machines_qs = filter_queryset_by_proxmox_vm_type(
-            base_qs,
+        base_qs = get_proxbox_tagged_virtual_machines_queryset(
+            request,
             VirtualMachine,
             vm_type="qemu",
             vm_type_slug="qemu-virtual-machine",
+        )
+        virtual_machines_qs, _filterset = apply_virtual_machine_list_filters(
+            request, base_qs
         )
         paginator, page = paginate_object_list(request, virtual_machines_qs)
 
@@ -171,6 +139,8 @@ class VirtualMachinesView(ConditionalLoginRequiredMixin, View):
                 "virtual_machines_total": paginator.count,
                 "page": page,
                 "paginator": paginator,
+                "model": VirtualMachine,
+                "filter_form": filter_form,
             },
         )
 

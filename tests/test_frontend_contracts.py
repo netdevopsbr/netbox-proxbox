@@ -929,6 +929,34 @@ def test_resource_list_views_use_netbox_pagination():
     assert contents.count("paginate_object_list(") >= 10
 
 
+def test_virtual_machines_list_reuses_netbox_search_and_filters():
+    """The proxbox VM list must expose NetBox's standard VM filterset and form."""
+    views = _read("netbox_proxbox/views/resource_list_views.py")
+    utils = _read("netbox_proxbox/utils.py")
+    api_views = _read("netbox_proxbox/api/views.py")
+    template = _read("netbox_proxbox/templates/netbox_proxbox/virtual_machines.html")
+
+    vm_view_start = views.index("class VirtualMachinesView(")
+    vm_view_end = views.index("class LXCContainersView(")
+    vm_view = views[vm_view_start:vm_view_end]
+
+    assert "def get_proxbox_tagged_virtual_machines_queryset(" in utils
+    assert "def apply_virtual_machine_list_filters(" in utils
+    assert "VirtualMachineFilterSet" in utils
+    assert "get_proxbox_tagged_virtual_machines_queryset(" in vm_view
+    assert "apply_virtual_machine_list_filters(" in vm_view
+    assert "VirtualMachineFilterForm" in vm_view
+    assert '"filter_form": filter_form' in vm_view
+    assert '"model": VirtualMachine' in vm_view
+    assert 'request.GET.get("cluster_id"' not in vm_view
+    assert 'request.GET.get("status"' not in vm_view
+    assert "apply_virtual_machine_list_filters(" in api_views
+    assert "extends 'generic/_base.html'" in template
+    assert "inc/filter_list.html" in template
+    assert "applied_filters model filter_form request.GET" in template
+    assert "filters-form-tab" in template
+
+
 def test_resource_list_paginator_partial_exists_without_htmx():
     partial = _read("netbox_proxbox/templates/netbox_proxbox/inc/paginator.html")
     assert "proxbox_paginate_url" in partial

@@ -1,5 +1,10 @@
-{% extends 'base/layout.html' %}
+{% extends 'generic/_base.html' %}
 {% load static %}
+{% load helpers %}
+{% load form_helpers %}
+{% load i18n %}
+
+{% block title %}{% trans "Virtual Machines" %}{% endblock %}
 
 {% block head %}
     <script>
@@ -12,6 +17,25 @@
     <script type="module" src="{% static 'netbox_proxbox/js/home.js' %}"></script>
 {% endblock %}
 
+{% block tabs %}
+  <ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <a class="nav-link active" id="object-list-tab" data-bs-toggle="tab" data-bs-target="#object-list" type="button" role="tab" aria-controls="object-list" aria-selected="true">
+        {% trans "Results" %}
+        <span class="badge text-bg-secondary total-object-count">{{ virtual_machines_total|default:"0" }}</span>
+      </a>
+    </li>
+    {% if filter_form %}
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="filters-form-tab" data-bs-toggle="tab" data-bs-target="#filters-form" type="button" role="tab" aria-controls="filters-form" aria-selected="false">
+          {% trans "Filters" %}
+          {% badge filter_form.changed_data|length bg_color="primary" %}
+        </button>
+      </li>
+    {% endif %}
+  </ul>
+{% endblock tabs %}
+
 {% block content %}
     <div class="row mb-3">
         <div id="sync-progress-container" class="d-none sticky-top pt-2 mb-3" style="z-index: 1030;">
@@ -19,10 +43,10 @@
                 <div class="card border-primary shadow-sm">
                     <div class="card-body py-2">
                         <div class="d-flex justify-content-between align-items-center">
-                            <strong id="sync-progress-label">Sync in progress</strong>
-                            <span id="sync-progress-state" class="text-muted small">Working...</span>
+                            <strong id="sync-progress-label">{% trans "Sync in progress" %}</strong>
+                            <span id="sync-progress-state" class="text-muted small">{% trans "Working..." %}</span>
                         </div>
-                        <div class="progress mt-2" role="progressbar" aria-label="Sync progress indicator" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress mt-2" role="progressbar" aria-label="{% trans "Sync progress indicator" %}" aria-valuemin="0" aria-valuemax="100">
                             <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%;"></div>
                         </div>
                     </div>
@@ -35,22 +59,34 @@
         <div style="margin-bottom: 15px;" class="container noprint">
             <form class="m-2" method="post" action="{% url 'plugins:netbox_proxbox:sync_virtual_machines' %}" data-sync-url="{% url 'plugins:netbox_proxbox:sync_virtual_machines' %}" data-sync-kind="virtual-machines">
                 {% csrf_token %}
-                <button id="sync-virtual-machines-button" type="submit" class="btn btn-primary" data-sync-url="{% url 'plugins:netbox_proxbox:sync_virtual_machines' %}" data-sync-kind="virtual-machines">Sync Virtual Machines</button>
+                <button id="sync-virtual-machines-button" type="submit" class="btn btn-primary" data-sync-url="{% url 'plugins:netbox_proxbox:sync_virtual_machines' %}" data-sync-kind="virtual-machines">{% trans "Sync Virtual Machines" %}</button>
             </form>
             <a href="{% url 'plugins:netbox_proxbox:schedule_sync' %}?sync_type=virtual-machines" class="btn btn-outline-primary m-2">
-                <i class="mdi mdi-clock-outline"></i> Schedule Sync
+                <i class="mdi mdi-clock-outline"></i> {% trans "Schedule Sync" %}
             </a>
         </div>
 
-        <form method="post" action="{% url 'plugins:netbox_proxbox:sync_selected_virtual_machines' %}">
-            {% csrf_token %}
-            {% include "netbox_proxbox/table/virtual_machines.html" %}
-            {% include "netbox_proxbox/inc/paginator.html" %}
-            <div class="container mt-3 mb-2 noprint">
-                <button type="submit" class="btn btn-primary">
-                    <i class="mdi mdi-sync" aria-hidden="true"></i> Sync Selected
-                </button>
+        <div class="tab-pane show active" id="object-list" role="tabpanel" aria-labelledby="object-list-tab">
+            {% if filter_form %}
+                {% applied_filters model filter_form request.GET %}
+            {% endif %}
+
+            <form method="post" action="{% url 'plugins:netbox_proxbox:sync_selected_virtual_machines' %}">
+                {% csrf_token %}
+                {% include "netbox_proxbox/table/virtual_machines.html" %}
+                {% include "netbox_proxbox/inc/paginator.html" %}
+                <div class="container mt-3 mb-2 noprint">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="mdi mdi-sync" aria-hidden="true"></i> {% trans "Sync Selected" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if filter_form %}
+            <div class="tab-pane show" id="filters-form" role="tabpanel" aria-labelledby="filters-form-tab">
+                {% include 'inc/filter_list.html' %}
             </div>
-        </form>
+        {% endif %}
     </div>
 {% endblock %}

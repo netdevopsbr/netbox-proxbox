@@ -645,8 +645,10 @@ def test_proxmox_endpoint_export_requires_token_for_sensitive_payloads():
 
 def test_resource_vm_api_views_gate_native_vm_type_field_for_netbox_45():
     contents = VIEWS_PATH.read_text()
-    assert "filter_queryset_by_proxmox_vm_type(" in contents
-    assert "vm_type_select_related_fields(VirtualMachine)" in contents
+    utils = UTILS_PATH.read_text()
+    assert "get_proxbox_tagged_virtual_machines_queryset(" in contents
+    assert "filter_queryset_by_proxmox_vm_type(" in utils
+    assert "vm_type_select_related_fields(model_class)" in utils
     assert "Q(virtual_machine_type__slug=self.vm_type_slug)" not in contents
     assert (
         '.select_related("site", "cluster", "role", "tenant", "platform")'
@@ -678,10 +680,10 @@ def test_vm_resource_api_filters_full_queryset_before_limit_offset_pagination():
 
     source = _class_source(VIEWS_PATH, "_ProxboxVMListAPIView")
 
-    assert "get_proxbox_tagged_object_ids(VirtualMachine)" in source
+    assert "get_proxbox_tagged_virtual_machines_queryset(" in source
+    assert "apply_virtual_machine_list_filters(" in source
     assert "get_proxbox_tagged_object_ids(VirtualMachine, limit=100)" not in source
     assert "[:100]" not in source
-    assert '.order_by("name")' in source
     assert "paginator = LimitOffsetPagination()" in source
     assert "paginator.default_limit = 1000" in source
     assert "paginator.max_limit = 5000" in source
@@ -691,11 +693,10 @@ def test_vm_resource_api_filters_full_queryset_before_limit_offset_pagination():
     assert "paginator.paginate_queryset(qs, request, view=self)" in source
     assert "paginator.get_paginated_response(results)" in source
 
-    filter_index = source.index("qs = filter_queryset_by_proxmox_vm_type(")
-    order_index = source.index('.order_by("name")')
+    filter_index = source.index("apply_virtual_machine_list_filters(")
     paginator_index = source.index("paginator = LimitOffsetPagination()")
     paginate_index = source.index("paginator.paginate_queryset(qs, request, view=self)")
-    assert filter_index < order_index < paginator_index < paginate_index
+    assert filter_index < paginator_index < paginate_index
 
 
 def test_vm_resource_api_subclasses_pin_qemu_and_lxc_filters():
