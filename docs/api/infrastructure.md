@@ -8,13 +8,14 @@ For the operational guide — how to trigger cluster/node syncs, link to NetBox 
 
 ---
 
-## Proxmox InfluxDB Metrics Endpoint
+## Proxmox Metrics Endpoint
 
-Proxmox cluster InfluxDB metrics mappings are exposed as standard NetBox plugin
-model API objects.
+Proxmox cluster metrics mappings are exposed as standard NetBox plugin model
+API objects. The persisted `source_mode` selects `influx`, `pull`, or
+`reconciled` collection.
 
 For the complete operator setup, trust boundary, credential lifecycle, and
-troubleshooting procedure, see the [Monitoring & Observability guide](../features/monitoring.md#influxdb-metrics-integration).
+troubleshooting procedure, see the [Monitoring & Observability guide](../features/monitoring.md#proxmox-metrics-integration).
 
 ```
 GET    /api/plugins/proxbox/metrics-influxdb/
@@ -26,21 +27,20 @@ PATCH  /api/plugins/proxbox/metrics-influxdb/{id}/
 DELETE /api/plugins/proxbox/metrics-influxdb/{id}/
 ```
 
-`query_token` is a write-only input. The plugin encrypts it with its own Fernet
-key and returns only `query_token_configured` and
-`credential_encryption_state`. Legacy external references are cleared during
-migration and must be entered again.
+`query_token` is a write-only input required only when `source_mode` includes
+InfluxDB. The plugin encrypts it with its own Fernet key and returns only
+`query_token_configured` and `credential_encryption_state`.
 
 The `data` action accepts bounded `time_start`, `time_stop`, `measurement`,
 `field`, `node`, `vmid`, `tag_key`, `tag_value`, `aggregation_every`,
-`aggregation_function`, and `limit` filters. It sends the query through `proxbox-api`;
-callers never connect to InfluxDB and cannot submit arbitrary Flux. The response
-contains normalized `columns` and `rows`. The backend accepts HTTPS targets,
-validates resolved destinations against the shared SSRF policy, and keeps TLS
-verification enabled unless its operator-controlled insecure-TLS override is
-enabled. Use filters `endpoint`,
-`proxmox_cluster`, `enabled`, and `name` to select mappings for a cluster or
-endpoint. See [Proxmox Metrics Architecture](../developer/proxmox-metrics-architecture.md).
+`aggregation_function`, and `limit` filters. It sends required provider queries
+through `proxbox-api`; callers cannot submit arbitrary Flux or a Proxmox path.
+Canonical rows include provenance. Reconciled responses also report partial
+source failures, duplicate counts, and Influx-wins conflicts. Aggregation is
+available only when pull data does not participate; tag filters and combined
+node-plus-VM filters are also Influx-only. Use filters `endpoint`,
+`proxmox_cluster`, `source_mode`, `enabled`, and `name` to select mappings. See
+[Proxmox Metrics Architecture](../developer/proxmox-metrics-architecture.md).
 
 ---
 

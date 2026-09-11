@@ -1,5 +1,21 @@
 # `tests`
 
+`test_openbao_credential_integration.py` pins conditional automatic storage,
+explicit-choice precedence, required-secret failure and material validation, and
+API authentication selection. `test_openbao_optionality_django.py` exercises real
+Fernet round trips for all four endpoint secrets, the blank settings form and
+serializer, forward migration preservation, and backend/export single-method
+compatibility. It is enumerated in the real-Django workflow; the mocked suite
+intentionally skips database assertions. Backend identity/transport tests use a
+narrow storage-adapter stand-in; model validation explicitly reloads the real
+adapter so transport stubs cannot suppress its checks.
+
+The real optionality suite also covers endpoint-list serialization with missing,
+deleted, and denied secrets; SSH reuse 422/503 responses; failed-then-healthy
+monitoring scheduling; token-pair repairs; original-store preservation after
+clears; actor propagation; and missing-address form errors. These caller tests
+complement helper coverage and must remain in the native Django lane.
+
 > **Repository destination guardrail:** This guide inherits the hard rule in
 > the repository-root `CLAUDE.md`. EdgeUno and the local EdgeUno vendor
 > submodule are read-only reference sources, never change destinations. All
@@ -12,6 +28,8 @@
 > fallback, or PR base.
 
 This directory contains the plugin's pytest test suite.
+
+The browser-console handoff is covered primarily by `test_template_content_sync_now.py`, with settings persistence and migration-graph coverage in `test_settings_view_encryption.py`, `test_settings_view_hardware_discovery.py`, and `test_migration_graph_single_leaf.py`. Keep QEMU/LXC route selection, NetBox VM primary-key use, supported `buttons()` composition, every permission/sync/origin hide condition, render-time URL revalidation, opener isolation, and the absence of Proxmox topology or credentials aligned with `../docs/features/browser-console.md`.
 
 `test_proxmox_endpoint_allowed_tenants.py` keeps its source contracts in the
 mocked suite and runs its database filter/serializer checks in the explicitly
@@ -137,6 +155,10 @@ endpoints without requiring an OpenBao deployment for tenant behavior.
   `queryset.update()` cannot persist an invalid enabled URL/query-token state,
   and exercises the changelog page, core ObjectChange REST representation,
   bypass-written list search, and edit GET behavior.
+- `test_metrics_reconciliation.py`: isolated behavior coverage for official
+  Proxmox Influx field/tag normalization, pull payload bounds and fixed endpoint
+  selection, pull-only credential isolation, deterministic exact-duplicate
+  collapse, Influx conflict precedence, and partial-source responses.
 - `test_pdm_endpoint_permissions_django.py`: real-NetBox permission coverage for
   the PDM detail override's discovered-remotes table, including a parent-only
   viewer and an object-constrained `PDMRemote` grant.

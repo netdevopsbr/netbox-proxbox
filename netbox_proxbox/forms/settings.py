@@ -463,11 +463,14 @@ class ProxboxPluginSettingsForm(forms.Form):
         ),
     )
     credential_storage_backend = forms.ChoiceField(
-        required=True,
-        choices=CredentialStorageBackendChoices.CHOICES,
+        required=False,
+        choices=[("", "Automatic (enabled plugins)")]
+        + list(CredentialStorageBackendChoices.CHOICES),
         label="Credential storage backend",
         help_text=(
             "Default storage for Proxmox API tokens, passwords, and SSH secrets. "
+            "Automatic uses OpenBao when netbox-openbao is enabled and legacy "
+            "Fernet otherwise. Explicit selections never fall back. "
             "OpenBao is recommended for Write mode."
         ),
     )

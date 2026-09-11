@@ -38,6 +38,11 @@ This directory contains NetBox generic model views for the three endpoint models
 
 ## Export Views
 
+Proxmox sensitive export uses `resolve_endpoint_api_credentials`: an absent,
+unselected password or token is omitted, but required or referenced OpenBao
+material must resolve successfully. Provider failure never produces an apparently
+successful export containing an empty required secret.
+
 All three endpoint types expose an `ExportView` at `{model}_export` that supports CSV, JSON, and YAML output in two modes:
 
 - **Safe export** (GET or POST without `include_sensitive=true`): Excludes all credential fields. Anyone with `view` permission on the model can download.

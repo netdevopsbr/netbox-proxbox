@@ -13,6 +13,13 @@
 
 This directory contains Django/NetBox forms for plugin models, plugin settings, and the filter forms used by list views.
 
+Primary-secret preservation uses the submitted token selection after explicit
+clears, while reads still use the instance's original credential backend. An
+absent unselected counterpart is optional; an existing unresolved reference is
+not. Preserve `request_user` through the shared SSH form initializer so OpenBao
+reads and writes retain the initiating actor. Expected storage failures become
+field errors or false readiness, never uncaught form-validation exceptions.
+
 ## Files And Ownership
 
 - [`__init__.py`](./__init__.py): re-exports all concrete form classes.
@@ -32,7 +39,10 @@ This directory contains Django/NetBox forms for plugin models, plugin settings, 
   (`ProxboxPluginSettings` singleton), write-only verified key-rotation form,
   and family-selective destructive-reset form with acknowledgement plus exact
   typed confirmation. Ordinary encryption controls are disabled while
-  ciphertext exists.
+  ciphertext exists. `clean_console_url()` normalizes an optional trailing
+  slash and accepts only an HTTPS origin for the credential-free NMS handoff;
+  keep it aligned with the shared model validator and
+  `../../docs/features/browser-console.md`.
 - [`storage.py`](./storage.py): create/edit and filter forms for `ProxmoxStorage`.
 - [`vm_backup.py`](./vm_backup.py): create/edit and filter forms for `VMBackup`.
 - [`vm_snapshot.py`](./vm_snapshot.py): create/edit and filter forms for `VMSnapshot`.
@@ -40,6 +50,15 @@ This directory contains Django/NetBox forms for plugin models, plugin settings, 
 - [`widgets.py`](./widgets.py): custom widgets used by forms, including bootstrap checkbox styles.
 
 ## Dependencies
+
+The settings form offers `Automatic (enabled plugins)` as the blank credential
+storage selection. It preserves a submitted blank value instead of persisting an
+unconditional OpenBao choice. The runtime resolver retains endpoint-over-plugin
+precedence and never downgrades an explicit selection on provider failure.
+The endpoint edit form preserves masked API secrets through the per-field
+selector, so password-only and token-only OpenBao endpoints remain editable.
+Explicit clear/replacement requests bypass preservation of the affected field;
+remaining required or referenced secrets still fail validation when unresolved.
 
 - Inbound: view classes in `views/` import these forms for object edit and list pages.
 - Outbound: `netbox_proxbox.models`, `netbox_proxbox.choices`, NetBox form base classes, and NetBox core models such as `IPAddress`, `Token`, and `VirtualMachine`.

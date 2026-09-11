@@ -1078,31 +1078,31 @@ class ProxmoxServiceMonitoringJob(JobRunner):
         requested_by = getattr(getattr(self, "job", None), "user", None)
 
         for endpoint in endpoints:
-            if not getattr(endpoint, "service_monitoring_eligible", False):
-                _record_service_monitoring_tick_error(
-                    endpoint,
-                    (
-                        "Service monitoring is enabled but the endpoint is no "
-                        "longer eligible; check allow_writes, API + SSH access, "
-                        "endpoint SSH credentials, and netbox-rpc enablement."
-                    ),
-                )
-                continue
-            if not service_monitoring_collection_due(
-                endpoint,
-                latest_collected_at=latest_by_endpoint.get(endpoint.pk),
-                now=now,
-            ):
-                continue
-            if endpoint.pk in pending_endpoint_ids:
-                if logger is not None:
-                    logger.info(
-                        "Skipping Proxmox service monitoring for endpoint %s; "
-                        "a prior collection is still pending.",
-                        getattr(endpoint, "pk", endpoint),
-                    )
-                continue
             try:
+                if not getattr(endpoint, "service_monitoring_eligible", False):
+                    _record_service_monitoring_tick_error(
+                        endpoint,
+                        (
+                            "Service monitoring is enabled but the endpoint is no "
+                            "longer eligible; check allow_writes, API + SSH access, "
+                            "endpoint SSH credentials, and netbox-rpc enablement."
+                        ),
+                    )
+                    continue
+                if not service_monitoring_collection_due(
+                    endpoint,
+                    latest_collected_at=latest_by_endpoint.get(endpoint.pk),
+                    now=now,
+                ):
+                    continue
+                if endpoint.pk in pending_endpoint_ids:
+                    if logger is not None:
+                        logger.info(
+                            "Skipping Proxmox service monitoring for endpoint %s; "
+                            "a prior collection is still pending.",
+                            getattr(endpoint, "pk", endpoint),
+                        )
+                    continue
                 collect_systemctl_services(
                     endpoint,
                     requested_by=requested_by,

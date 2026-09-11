@@ -5,6 +5,20 @@ The complete target architecture, migration matrix and setup runbook are in
 Mandatory RPC writes and generic OpenBao-backed procedure variables are planned;
 the endpoint storage integration described here already exists.
 
+Unavailable required credentials fail explicitly at secret-access boundaries.
+Password-reuse readiness and list views report SSH as unavailable instead of
+failing the entire response. SSH password reuse returns a safe 503 when stored material cannot be
+resolved; a token-only endpoint still returns 422 because an API token is not an
+SSH password. Scheduled monitoring records an affected endpoint's failure and
+continues evaluating other endpoints.
+
+Endpoint edit forms preserve masked values from the original storage backend,
+using the submitted authentication selection after explicit clears. A complete
+new token pair can repair an endpoint that has no stored credentials. An existing
+unresolved counterpart reference still blocks preservation until the operator
+repairs, replaces, or explicitly clears that credential. The requesting actor is
+retained for authorized OpenBao reads and writes.
+
 `netbox-openbao` is a **separate** NetBox plugin from the Proxbox suite. It is
 not a companion plugin in the same sense as netbox-pbs or netbox-ceph — you do
 not install it through proxbox-api sync jobs — but it is the supported way to
@@ -81,9 +95,18 @@ adapter, which imports OpenBao models and services at call time.
 
 netbox-proxbox can also store **Proxmox endpoint** tokens and SSH secrets
 through netbox-openbao when
-`ProxboxPluginSettings.credential_storage_backend = openbao` (default). That
+`ProxboxPluginSettings.credential_storage_backend = openbao`. Automatic (the
+blank default) selects that backend only when `netbox_openbao` is enabled in
+`PLUGINS`; otherwise it selects legacy Fernet. Explicit selections remain
+authoritative and never downgrade when OpenBao becomes unavailable. That
 path secures *how NetBox talks to Proxmox*, not *how operators SSH into a synced
 guest*.
+
+Missing OpenBao references and invalid or unavailable material fail explicitly
+with the endpoint and credential field named. Existing stored backend choices
+are preserved during upgrade; the automatic default does not migrate secrets.
+See [credential storage configuration](../configuration/plugin-settings.md#encryption-and-credential-storage)
+before changing the enabled plugin set.
 
 | Credential | Stored by | Bound to |
 |---|---|---|

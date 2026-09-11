@@ -288,12 +288,35 @@ SSH secrets for endpoints:
 
 | Backend | Setting value | Where material lives | Write mode |
 |---|---|---|---|
-| **OpenBao (default)** | `openbao` | OpenBao KV via the **netbox-openbao** plugin; NetBox holds only credential UUID references on `ProxmoxEndpoint` | Requires **netbox-openbao** installed, a default `SecretEngine`, and at least one `CredentialPolicy` before `allow_writes=True` can be saved |
+| **Automatic (default)** | empty string | OpenBao when `netbox_openbao` is enabled in `PLUGINS`; otherwise legacy Fernet | Uses the requirements of the selected backend |
+| **OpenBao** | `openbao` | OpenBao KV via the **netbox-openbao** plugin; NetBox holds only credential UUID references on `ProxmoxEndpoint` | Requires **netbox-openbao** installed, a default `SecretEngine`, and at least one `CredentialPolicy` before `allow_writes=True` can be saved |
 | **Legacy Fernet** | `legacy_encrypted` | Fernet-encrypted `*_enc` columns in the NetBox database (previous behavior) | Uses the plugin **Encryption key** below; no OpenBao dependency |
 
 Configure the default on **Plugin Settings → Credential storage backend**.
 Each **Proxmox endpoint** may override that default with its own
 **Credential storage backend** field (blank = inherit).
+
+An explicit endpoint selection wins over an explicit plugin setting, which wins
+over Automatic. Installing the Python package without enabling `netbox_openbao`
+in `PLUGINS` does not select OpenBao. A saved `openbao` selection never falls back
+to Fernet if the plugin is later disabled or its engine, policy, or access is
+missing. Existing saved selections are unchanged by the automatic-default
+migration; no credentials are moved or rewritten.
+
+The four OpenBao endpoint resolvers require a resolvable credential reference
+and a nonempty string for the requested secret field. Missing references, stale
+credentials, denied access, and invalid material raise an error naming the
+endpoint and reference field, without including secret material or provider
+error details. Backend registration, endpoint edit forms, and sensitive export omit only an absent,
+unselected authentication method: token authentication still requires its token,
+and password authentication still requires its password.
+
+Automatic is a compatibility setting, not a credential-migration tool. Before
+enabling or disabling OpenBao on an installation with existing credentials,
+explicitly retain the current storage backend until the planned, verified
+migration is complete. The strict audited-write integration described in the
+[implementation plan](../companion-plugins/audited-proxmox-writes.md) requires
+OpenBao and does not gain a Fernet fallback from this compatibility setting.
 
 For automated backend sync and background jobs that reveal OpenBao credentials,
 set **OpenBao service username** to a NetBox user allowed by your OpenBao

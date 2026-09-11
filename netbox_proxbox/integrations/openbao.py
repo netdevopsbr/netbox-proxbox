@@ -9,7 +9,7 @@ load time, and callers degrade cleanly when the plugin is absent.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
@@ -30,6 +30,8 @@ __all__ = (
     "openbao_prerequisites_met",
     "openbao_prerequisites_errors",
     "reveal_credential_material",
+    "resolve_endpoint_api_credentials",
+    "resolve_endpoint_api_secret",
     "resolve_endpoint_password",
     "resolve_endpoint_token_value",
     "resolve_endpoint_ssh_password",
@@ -75,7 +77,9 @@ def effective_credential_storage_backend(
         backend = getattr(settings_row, "credential_storage_backend", "") or ""
         if backend:
             return backend
-    return CredentialStorageBackendChoices.OPENBAO
+    if is_netbox_openbao_installed():
+        return CredentialStorageBackendChoices.OPENBAO
+    return CredentialStorageBackendChoices.LEGACY_ENCRYPTED
 
 
 def endpoint_uses_openbao_storage(endpoint: ProxmoxEndpoint) -> bool:
@@ -359,6 +363,45 @@ def reveal_credential_material(credential: Any, *, user: Any | None = None) -> d
     return payload if isinstance(payload, dict) else {}
 
 
+def resolve_endpoint_api_credentials(endpoint: ProxmoxEndpoint) -> dict[str, str]:
+    """Read API material while omitting only an unselected authentication method.
+
+    A token name selects token authentication. Missing required material must
+    still raise; an absent optional password must not break a token-only endpoint.
+    Existing references are always resolved, so a stale reference is never hidden.
+    """
+    return {
+        "password": resolve_endpoint_api_secret(endpoint, "password"),
+        "token_value": resolve_endpoint_api_secret(endpoint, "token_value"),
+    }
+
+
+def resolve_endpoint_api_secret(
+    endpoint: ProxmoxEndpoint,
+    field: Literal["password", "token_value"],
+    *,
+    token_selected: bool | None = None,
+) -> str:
+    """Read stored material using the current or explicitly submitted auth mode.
+
+    The override selects which absent counterpart is optional, never the store
+    used for preservation. Existing references must still resolve successfully.
+    """
+    if field not in ("password", "token_value"):
+        raise ValueError("Unsupported endpoint API credential field.")
+    if not endpoint_uses_openbao_storage(endpoint):
+        return getattr(endpoint, field) or ""
+    if token_selected is None:
+        token_selected = bool((endpoint.token_name or "").strip())
+    if field == "password":
+        if not token_selected or endpoint.openbao_password_credential_uuid:
+            return resolve_endpoint_password(endpoint)
+        return ""
+    if token_selected or endpoint.openbao_token_credential_uuid:
+        return resolve_endpoint_token_value(endpoint)
+    return ""
+
+
 def resolve_endpoint_password(
     endpoint: ProxmoxEndpoint,
     *,
@@ -368,13 +411,9 @@ def resolve_endpoint_password(
         from netbox_proxbox.models.primary_secrets import decrypt_primary_secret
 
         return decrypt_primary_secret(endpoint.password_enc)
-    credential = _credential_for_uuid(
-        getattr(endpoint, "openbao_password_credential_uuid", None)
+    return _resolve_endpoint_secret(
+        endpoint, "openbao_password_credential_uuid", "password", user=user
     )
-    if credential is None:
-        return ""
-    payload = reveal_credential_material(credential, user=user)
-    return str(payload.get("password") or "")
 
 
 def resolve_endpoint_token_value(
@@ -386,13 +425,9 @@ def resolve_endpoint_token_value(
         from netbox_proxbox.models.primary_secrets import decrypt_primary_secret
 
         return decrypt_primary_secret(endpoint.token_value_enc)
-    credential = _credential_for_uuid(
-        getattr(endpoint, "openbao_token_credential_uuid", None)
+    return _resolve_endpoint_secret(
+        endpoint, "openbao_token_credential_uuid", "token", user=user
     )
-    if credential is None:
-        return ""
-    payload = reveal_credential_material(credential, user=user)
-    return str(payload.get("token") or "")
 
 
 def resolve_endpoint_ssh_password(
@@ -401,16 +436,14 @@ def resolve_endpoint_ssh_password(
     user: Any | None = None,
 ) -> str:
     if not endpoint_uses_openbao_storage(endpoint):
+        from netbox_proxbox.models import ProxboxPluginSettings
         from netbox_proxbox.utils import encryption as enc_helpers
 
-        return enc_helpers.decrypt(endpoint.ssh_password_enc)
-    credential = _credential_for_uuid(
-        getattr(endpoint, "openbao_ssh_password_credential_uuid", None)
+        key = ProxboxPluginSettings.get_solo().encryption_key or ""
+        return enc_helpers.decrypt(endpoint.ssh_password_enc, key=key)
+    return _resolve_endpoint_secret(
+        endpoint, "openbao_ssh_password_credential_uuid", "password", user=user
     )
-    if credential is None:
-        return ""
-    payload = reveal_credential_material(credential, user=user)
-    return str(payload.get("password") or "")
 
 
 def resolve_endpoint_ssh_private_key(
@@ -424,10 +457,35 @@ def resolve_endpoint_ssh_private_key(
 
         key = ProxboxPluginSettings.get_solo().encryption_key or ""
         return enc_helpers.decrypt(endpoint.ssh_private_key_enc, key=key)
-    credential = _credential_for_uuid(
-        getattr(endpoint, "openbao_ssh_keypair_credential_uuid", None)
+    return _resolve_endpoint_secret(
+        endpoint, "openbao_ssh_keypair_credential_uuid", "private_key", user=user
     )
-    if credential is None:
-        return ""
-    payload = reveal_credential_material(credential, user=user)
-    return str(payload.get("private_key") or "")
+
+
+def _resolve_endpoint_secret(
+    endpoint: ProxmoxEndpoint,
+    reference_field: str,
+    material_field: str,
+    *,
+    user: Any | None = None,
+) -> str:
+    """Resolve required OpenBao material without masking failure as an empty secret."""
+    message = _(
+        "Endpoint %(endpoint)s (id=%(pk)s): cannot resolve OpenBao credential "
+        "field %(field)s. Verify the reference, plugin configuration, and access."
+    ) % {
+        "endpoint": getattr(endpoint, "name", "") or "Proxmox endpoint",
+        "pk": getattr(endpoint, "pk", None),
+        "field": reference_field,
+    }
+    try:
+        credential = _credential_for_uuid(getattr(endpoint, reference_field, None))
+        if credential is None:
+            raise ValidationError(message)
+        payload = reveal_credential_material(credential, user=user)
+    except Exception:  # noqa: BLE001 - never expose provider errors or material
+        raise ValidationError(message) from None
+    value = payload.get(material_field) if isinstance(payload, dict) else None
+    if not isinstance(value, str) or not value:
+        raise ValidationError(message)
+    return value

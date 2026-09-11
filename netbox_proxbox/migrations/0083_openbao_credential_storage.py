@@ -38,7 +38,8 @@ class Migration(migrations.Migration):
             "credential_storage_backend",
             models.CharField(
                 choices=CredentialStorageBackendChoices,
-                default=CredentialStorageBackendChoices.OPENBAO,
+                blank=True,
+                default="",
                 max_length=32,
                 verbose_name="Credential storage backend",
             ),

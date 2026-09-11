@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import requests
 from django.conf import settings as django_settings
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from netbox.api.authentication import TokenAuthentication
 from rest_framework import status
@@ -303,40 +304,12 @@ class ProxmoxEndpointSSHCredentialSecretsAPIView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
         if endpoint.ssh_credential_source == SSH_CRED_SOURCE_REUSE:
-            try:
-                reused_password = endpoint.password
-            except enc_helpers.EncryptionError:
-                return Response(
-                    {
-                        "detail": (
-                            "Stored endpoint password cannot be decrypted. Plugin "
-                            "encryption recovery is required."
-                        )
-                    },
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
-            if not reused_password:
-                return Response(
-                    {
-                        "detail": (
-                            "Endpoint SSH credential source is reuse_endpoint, but "
-                            "the endpoint has no stored password. Token-only "
-                            "endpoints cannot reuse SSH credentials."
-                        )
-                    },
-                    status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                )
+            return self._reused_credentials_response(endpoint)
         if not endpoint.has_ssh_terminal_credentials:
             return Response(
                 {"detail": "No endpoint SSH fallback credential configured."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        if endpoint.ssh_credential_source == SSH_CRED_SOURCE_REUSE:
-            payload = _endpoint_metadata_payload(endpoint)
-            payload["password"] = reused_password or ""
-            payload["private_key"] = ""
-            return Response(payload)
-
         from netbox_proxbox.integrations.openbao import endpoint_uses_openbao_storage
 
         if endpoint_uses_openbao_storage(endpoint):
@@ -352,8 +325,6 @@ class ProxmoxEndpointSSHCredentialSecretsAPIView(APIView):
                     else ""
                 )
             except Exception as exc:
-                from django.core.exceptions import ValidationError
-
                 if not isinstance(exc, ValidationError):
                     raise
                 detail = exc.messages[0] if getattr(exc, "messages", None) else str(exc)
@@ -397,6 +368,44 @@ class ProxmoxEndpointSSHCredentialSecretsAPIView(APIView):
         payload = _endpoint_metadata_payload(endpoint)
         payload["password"] = password
         payload["private_key"] = private_key
+        return Response(payload)
+
+    @staticmethod
+    def _reused_credentials_response(endpoint: ProxmoxEndpoint) -> Response:
+        """Keep missing and unavailable reused-password responses secret-safe."""
+        from netbox_proxbox.integrations.openbao import resolve_endpoint_api_secret
+
+        try:
+            password = resolve_endpoint_api_secret(endpoint, "password")
+        except enc_helpers.EncryptionError:
+            return Response(
+                {
+                    "detail": "Stored endpoint password cannot be decrypted. Plugin encryption recovery is required."
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except ValidationError:
+            return Response(
+                {
+                    "detail": "Stored endpoint password is unavailable. Check the configured credential store and access permissions."
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        if not password:
+            return Response(
+                {
+                    "detail": "Endpoint SSH credential source is reuse_endpoint, but the endpoint has no stored password. Token-only endpoints cannot reuse SSH credentials."
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        if not endpoint.has_ssh_terminal_credentials:
+            return Response(
+                {"detail": "No endpoint SSH fallback credential configured."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        payload = _endpoint_metadata_payload(endpoint)
+        payload["password"] = password
+        payload["private_key"] = ""
         return Response(payload)
 
 

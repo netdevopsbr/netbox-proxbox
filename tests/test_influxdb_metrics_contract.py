@@ -46,7 +46,8 @@ def _load_model(monkeypatch: pytest.MonkeyPatch):
             self.kwargs = kwargs
 
         def __or__(self, other):
-            return (self, "OR", other)
+            self.args = (*self.args, "OR", other)
+            return self
 
     for name in (
         "BooleanField",
@@ -114,7 +115,7 @@ def _load_model(monkeypatch: pytest.MonkeyPatch):
         ),
         ("https://user:secret@influx.example.test:8086", "********"),
         ("https://influx.example.test:8086?org=secret", "********"),
-        ("", "********"),
+        ("", ""),
     ],
 )
 def test_influx_url_display_is_credential_free(monkeypatch, value, expected):
@@ -189,7 +190,7 @@ def test_plugin_proxy_matches_backend_contract_without_direct_influx_access():
 def test_docs_define_the_independent_architecture_and_bounded_data_route():
     architecture = _read("docs/developer/proxmox-metrics-architecture.md")
     api = _read("docs/api/infrastructure.md")
-    assert "netbox-monitoring" in architecture
+    assert "runtime dependency" in architecture
     assert "proxbox-api" in architecture
     assert "arbitrary caller-supplied flux is not accepted" in architecture.lower()
     assert "/api/plugins/proxbox/metrics-influxdb/{id}/data/" in api

@@ -89,9 +89,192 @@ def _load_openbao_module(monkeypatch):
     return module
 
 
-def test_effective_storage_backend_defaults_to_openbao(monkeypatch) -> None:
+@pytest.mark.parametrize(
+    "plugins, expected", [([], LEGACY), (["netbox_openbao"], OPENBAO)]
+)
+@pytest.mark.parametrize("saved", [None, ""])
+def test_effective_storage_backend_defaults_follow_enabled_plugins(
+    monkeypatch, plugins, expected, saved
+) -> None:
     openbao = _load_openbao_module(monkeypatch)
-    assert openbao.effective_credential_storage_backend(None) == OPENBAO
+    settings_module = types.ModuleType("django.conf")
+    settings_module.settings = types.SimpleNamespace(PLUGINS=plugins)
+    monkeypatch.setitem(sys.modules, "django.conf", settings_module)
+    row = (
+        None
+        if saved is None
+        else types.SimpleNamespace(credential_storage_backend=saved)
+    )
+    monkeypatch.setattr(openbao, "_plugin_settings", lambda: row)
+    assert openbao.effective_credential_storage_backend(None) == expected
+
+
+@pytest.mark.parametrize("installed", [False, True])
+@pytest.mark.parametrize("saved", [LEGACY, OPENBAO])
+@pytest.mark.parametrize("endpoint_backend", ["", LEGACY, OPENBAO])
+def test_explicit_storage_selections_remain_authoritative(
+    monkeypatch, installed, saved, endpoint_backend
+) -> None:
+    openbao = _load_openbao_module(monkeypatch)
+    monkeypatch.setattr(openbao, "is_netbox_openbao_installed", lambda: installed)
+    monkeypatch.setattr(
+        openbao,
+        "_plugin_settings",
+        lambda: types.SimpleNamespace(credential_storage_backend=saved),
+    )
+    endpoint = types.SimpleNamespace(credential_storage_backend=endpoint_backend)
+    assert openbao.effective_credential_storage_backend(endpoint) == (
+        endpoint_backend or saved
+    )
+    assert (
+        openbao.effective_credential_storage_backend(endpoint, override=LEGACY)
+        == LEGACY
+    )
+    assert (
+        openbao.effective_credential_storage_backend(endpoint, override=OPENBAO)
+        == OPENBAO
+    )
+
+
+SECRET_CASES = [
+    ("resolve_endpoint_password", "openbao_password_credential_uuid", "password"),
+    ("resolve_endpoint_token_value", "openbao_token_credential_uuid", "token"),
+    (
+        "resolve_endpoint_ssh_password",
+        "openbao_ssh_password_credential_uuid",
+        "password",
+    ),
+    (
+        "resolve_endpoint_ssh_private_key",
+        "openbao_ssh_keypair_credential_uuid",
+        "private_key",
+    ),
+]
+
+
+@pytest.mark.parametrize("resolver,reference,field", SECRET_CASES)
+@pytest.mark.parametrize(
+    "failure",
+    [
+        "unset",
+        "missing",
+        "disabled",
+        "denied",
+        "provider_error",
+        "empty",
+        "wrong_type",
+        "missing_field",
+        "bad_payload",
+    ],
+)
+def test_openbao_resolvers_fail_loud_without_disclosing_provider_material(
+    monkeypatch, resolver, reference, field, failure
+) -> None:
+    openbao = _load_openbao_module(monkeypatch)
+    endpoint = types.SimpleNamespace(
+        name="PVE example", pk=17, credential_storage_backend=OPENBAO
+    )
+    setattr(
+        endpoint,
+        reference,
+        None if failure == "unset" else "11111111-1111-4111-8111-111111111111",
+    )
+    credential = object()
+    if failure != "disabled":
+        monkeypatch.setattr(
+            openbao,
+            "_credential_for_uuid",
+            lambda uuid: None if failure in {"unset", "missing"} else credential,
+        )
+    else:
+        monkeypatch.setattr(openbao, "is_netbox_openbao_installed", lambda: False)
+    forbidden = "provider-secret-must-not-escape"
+
+    def reveal(*args, **kwargs):
+        if failure in {"denied", "provider_error"}:
+            raise RuntimeError(forbidden)
+        if failure == "bad_payload":
+            return [forbidden]
+        if failure == "missing_field":
+            return {"other": forbidden}
+        return {field: {"secret": forbidden} if failure == "wrong_type" else ""}
+
+    monkeypatch.setattr(openbao, "reveal_credential_material", reveal)
+    with pytest.raises(openbao.ValidationError) as caught:
+        getattr(openbao, resolver)(endpoint)
+    assert "PVE example" in str(caught.value)
+    assert reference in str(caught.value)
+    assert forbidden not in str(caught.value)
+    assert caught.value.__suppress_context__ or failure not in {
+        "denied",
+        "provider_error",
+    }
+
+
+@pytest.mark.parametrize("resolver,reference,field", SECRET_CASES)
+def test_openbao_resolvers_preserve_exact_material_and_actor(
+    monkeypatch, resolver, reference, field
+) -> None:
+    openbao = _load_openbao_module(monkeypatch)
+    endpoint = types.SimpleNamespace(credential_storage_backend=OPENBAO)
+    setattr(endpoint, reference, "reference")
+    actor = object()
+    credential = object()
+    monkeypatch.setattr(openbao, "_credential_for_uuid", lambda value: credential)
+    with patch.object(
+        openbao, "reveal_credential_material", return_value={field: " secret\n"}
+    ) as reveal:
+        assert getattr(openbao, resolver)(endpoint, user=actor) == " secret\n"
+    reveal.assert_called_once_with(credential, user=actor)
+
+
+@pytest.mark.parametrize("token_selected", [False, True])
+def test_api_credentials_do_not_reveal_an_unselected_absent_auth_method(
+    monkeypatch, token_selected
+) -> None:
+    openbao = _load_openbao_module(monkeypatch)
+    endpoint = types.SimpleNamespace(
+        credential_storage_backend=OPENBAO,
+        token_name="api-token" if token_selected else "",
+        openbao_password_credential_uuid=None if token_selected else "password-ref",
+        openbao_token_credential_uuid="token-ref" if token_selected else None,
+    )
+    with (
+        patch.object(
+            openbao, "resolve_endpoint_password", return_value="password-secret"
+        ) as password,
+        patch.object(
+            openbao, "resolve_endpoint_token_value", return_value="token-secret"
+        ) as token,
+    ):
+        result = openbao.resolve_endpoint_api_credentials(endpoint)
+    assert result == (
+        {"password": "", "token_value": "token-secret"}
+        if token_selected
+        else {"password": "password-secret", "token_value": ""}
+    )
+    assert password.call_count == (0 if token_selected else 1)
+    assert token.call_count == (1 if token_selected else 0)
+
+
+@pytest.mark.parametrize("token_selected", [False, True])
+def test_selected_api_auth_missing_material_does_not_downgrade(
+    monkeypatch, token_selected
+) -> None:
+    openbao = _load_openbao_module(monkeypatch)
+    endpoint = types.SimpleNamespace(
+        name="PVE",
+        pk=9,
+        credential_storage_backend=OPENBAO,
+        token_name="api-token" if token_selected else "",
+        openbao_password_credential_uuid=None,
+        openbao_token_credential_uuid=None,
+        password="legacy-secret",
+        token_value="legacy-token",
+    )
+    monkeypatch.setattr(openbao, "_credential_for_uuid", lambda uuid: None)
+    with pytest.raises(openbao.ValidationError):
+        openbao.resolve_endpoint_api_credentials(endpoint)
 
 
 def test_openbao_prerequisites_errors_when_plugin_missing(monkeypatch) -> None:
@@ -193,3 +376,105 @@ def test_ssh_getters_import_endpoint_uses_openbao_storage() -> None:
         block = source[start : source.index("\n    def ", start + 1)]
         assert "endpoint_uses_openbao_storage" in block
         assert "from netbox_proxbox.integrations.openbao import" in block
+
+
+def test_legacy_resolvers_decrypt_all_four_material_types_with_real_fernet(
+    monkeypatch,
+) -> None:
+    from cryptography.fernet import Fernet
+
+    openbao = _load_openbao_module(monkeypatch)
+    key = Fernet.generate_key()
+    config = types.SimpleNamespace(
+        encryption_key=key.decode(), credential_storage_backend=""
+    )
+    model_settings = types.SimpleNamespace(
+        get_solo=lambda: config, objects=types.SimpleNamespace(first=lambda: config)
+    )
+    sys.modules["netbox_proxbox.models"].ProxboxPluginSettings = model_settings
+    settings_module = types.ModuleType("netbox_proxbox.models.plugin_settings")
+    settings_module.ProxboxPluginSettings = model_settings
+    monkeypatch.setitem(
+        sys.modules, "netbox_proxbox.models.plugin_settings", settings_module
+    )
+    utilities = types.ModuleType("netbox_proxbox.utils")
+    utilities.__path__ = [str(REPO_ROOT / "netbox_proxbox" / "utils")]
+    monkeypatch.setitem(sys.modules, "netbox_proxbox.utils", utilities)
+    for name, path in (
+        ("netbox_proxbox.utils.encryption", "utils/encryption.py"),
+        ("netbox_proxbox.models.primary_secrets", "models/primary_secrets.py"),
+    ):
+        spec = importlib.util.spec_from_file_location(
+            name, REPO_ROOT / "netbox_proxbox" / path
+        )
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        monkeypatch.setitem(sys.modules, name, module)
+        spec.loader.exec_module(module)
+    monkeypatch.setattr(openbao, "is_netbox_openbao_installed", lambda: False)
+    endpoint = types.SimpleNamespace(credential_storage_backend="")
+    for resolver, field in (
+        ("resolve_endpoint_password", "password_enc"),
+        ("resolve_endpoint_token_value", "token_value_enc"),
+        ("resolve_endpoint_ssh_password", "ssh_password_enc"),
+        ("resolve_endpoint_ssh_private_key", "ssh_private_key_enc"),
+    ):
+        setattr(endpoint, field, Fernet(key).encrypt(b"exact-secret").decode())
+        assert getattr(openbao, resolver)(endpoint) == "exact-secret"
+    endpoint.password = "api-password"
+    endpoint.token_value = "api-token"
+    assert openbao.resolve_endpoint_api_credentials(endpoint) == {
+        "password": "api-password",
+        "token_value": "api-token",
+    }
+
+
+def test_api_selector_rejects_unknown_material_field(monkeypatch) -> None:
+    openbao = _load_openbao_module(monkeypatch)
+    with pytest.raises(ValueError, match="Unsupported endpoint API credential field"):
+        openbao.resolve_endpoint_api_secret(types.SimpleNamespace(), "ssh_private_key")
+
+
+@pytest.mark.parametrize("selected", [False, True])
+def test_api_selector_uses_submitted_auth_without_changing_storage(
+    monkeypatch, selected
+):
+    openbao = _load_openbao_module(monkeypatch)
+    endpoint = types.SimpleNamespace(
+        name="repair",
+        credential_storage_backend=OPENBAO,
+        token_name="old-token" if not selected else "",
+        openbao_password_credential_uuid=None,
+        openbao_token_credential_uuid=None,
+    )
+    optional_field = "password" if selected else "token_value"
+    assert (
+        openbao.resolve_endpoint_api_secret(
+            endpoint, optional_field, token_selected=selected
+        )
+        == ""
+    )
+    required_field = "token_value" if selected else "password"
+    with pytest.raises(openbao.ValidationError):
+        openbao.resolve_endpoint_api_secret(
+            endpoint, required_field, token_selected=selected
+        )
+    assert endpoint.credential_storage_backend == OPENBAO
+
+
+@pytest.mark.parametrize("token_selected", [False, True])
+def test_api_selector_does_not_hide_a_stale_optional_reference(
+    monkeypatch, token_selected
+) -> None:
+    openbao = _load_openbao_module(monkeypatch)
+    endpoint = types.SimpleNamespace(
+        name="stale-secondary",
+        credential_storage_backend=OPENBAO,
+        token_name="token" if token_selected else "",
+        openbao_password_credential_uuid="password-ref",
+        openbao_token_credential_uuid="token-ref",
+    )
+    monkeypatch.setattr(openbao, "_credential_for_uuid", lambda value: None)
+    field = "password" if token_selected else "token_value"
+    with pytest.raises(openbao.ValidationError):
+        openbao.resolve_endpoint_api_secret(endpoint, field)

@@ -13,6 +13,12 @@
 
 This directory defines the plugin's persisted data model.
 
+Required OpenBao secret resolvers remain fail-loud. SSH reuse readiness catches
+expected `ValidationError` and `EncryptionError` and reports false; model clean
+attaches storage failures to the credential-source field. Endpoint list
+serialization and monitoring eligibility must not reveal credentials or fail
+because a referenced secret is unavailable.
+
 ## Files And Ownership
 
 - [`__init__.py`](./__init__.py): re-exports all plugin model classes and shared model helpers.
@@ -22,8 +28,8 @@ This directory defines the plugin's persisted data model.
 - [`fastapi_endpoint.py`](./fastapi_endpoint.py): ProxBox backend endpoint model.
 - [`proxmox_cluster.py`](./proxmox_cluster.py): discovered Proxmox cluster model linked to endpoint and NetBox cluster data.
 - [`proxmox_node.py`](./proxmox_node.py): discovered Proxmox node model linked to endpoint and NetBox device data.
-- [`proxmox_metrics.py`](./proxmox_metrics.py): Proxmox cluster InfluxDB metrics endpoint metadata with a plugin-owned Fernet-encrypted query token.
-- [`plugin_settings.py`](./plugin_settings.py): singleton plugin settings model.
+- [`proxmox_metrics.py`](./proxmox_metrics.py): Proxmox cluster metrics metadata with persisted `influx`, `pull`, or `reconciled` source policy and a plugin-owned Fernet-encrypted InfluxDB query token.
+- [`plugin_settings.py`](./plugin_settings.py): singleton plugin settings model. `console_url` is an optional HTTPS origin only; `validate_console_url()` rejects whitespace, credentials, paths beyond `/`, queries, fragments, invalid ports, and non-HTTPS schemes. Model, form, serializer, and render-time validation must stay aligned with `../../docs/features/browser-console.md`.
 - [`storage.py`](./storage.py): `ProxmoxStorage` model and `ProxmoxStorageVirtualDisk` relation model.
 - [`guest_vm_interface.py`](./guest_vm_interface.py): guest-agent OS interfaces and address links for dual VM interface sync.
 - [`sync_state.py`](./sync_state.py): typed sidecar models for the legacy
@@ -139,6 +145,13 @@ This directory defines the plugin's persisted data model.
   until an operator explicitly enables the MAC behavior in the UI.
 
 ## Dependencies
+
+`ProxboxPluginSettings.credential_storage_backend` uses a blank automatic default.
+The integration resolver selects OpenBao only when `netbox_openbao` is enabled;
+explicit endpoint and persisted plugin selections remain authoritative. Required
+OpenBao secret access raises a secret-safe endpoint/reference-field error instead
+of returning empty material. Backend payloads and exports use the shared API
+credential selector to avoid resolving an absent, unselected authentication method.
 
 - Inbound: forms, tables, filtersets, views, serializers, and migrations all rely on these model definitions.
 - Outbound: NetBox core model base classes plus related objects in `dcim`, `ipam`, `users`, and `virtualization`.

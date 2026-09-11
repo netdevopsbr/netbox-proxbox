@@ -60,6 +60,9 @@ def _serialize_proxmox_endpoint(
         "token_name": endpoint.token_name or "",
     }
     if include_sensitive:
-        row["password"] = endpoint.password or ""
-        row["token_value"] = endpoint.token_value or ""
+        from netbox_proxbox.integrations.openbao import (
+            resolve_endpoint_api_credentials,
+        )
+
+        row.update(resolve_endpoint_api_credentials(endpoint))
     return row

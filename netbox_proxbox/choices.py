@@ -536,6 +536,6 @@ class CredentialStorageBackendChoices(ChoiceSet):
     LEGACY_ENCRYPTED = "legacy_encrypted"
 
     CHOICES = [
-        (OPENBAO, _("OpenBao (default)"), "green"),
+        (OPENBAO, _("OpenBao"), "green"),
         (LEGACY_ENCRYPTED, _("Legacy Fernet-encrypted local storage"), "orange"),
     ]

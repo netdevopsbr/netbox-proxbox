@@ -157,7 +157,7 @@ class ProxmoxEndpointSSHCredentialFormMixin(forms.Form):
             if endpoint_password is None:
                 try:
                     endpoint_password = getattr(instance, "password", "")
-                except enc_helpers.EncryptionError:
+                except (enc_helpers.EncryptionError, ValidationError):
                     endpoint_password = ""
             if not endpoint_password:
                 self.add_error(
@@ -461,7 +461,6 @@ class ProxmoxEndpointForm(ProxmoxEndpointSSHCredentialFormMixin, NetBoxModelForm
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         """Only expose the clear-credential checkboxes when there is something to clear."""
-        self._request_user = kwargs.pop("request_user", None)
         super().__init__(*args, **kwargs)
         instance = getattr(self, "instance", None)
         if not (instance and getattr(instance, "pk", None)):
@@ -553,23 +552,40 @@ class ProxmoxEndpointForm(ProxmoxEndpointSSHCredentialFormMixin, NetBoxModelForm
 
         # Keep stored secrets on edit when user submits blank masked fields,
         # unless they explicitly cleared them above.
-        if self.instance and self.instance.pk:
-            if not clear_password and not cleaned_data.get("password"):
-                try:
-                    cleaned_data["password"] = self.instance.password
-                except (enc_helpers.EncryptionError, ValidationError) as exc:
-                    self.add_error(
-                        "password",
-                        str(getattr(exc, "messages", [exc])[0]),
-                    )
-            if not clear_token and not cleaned_data.get("token_value"):
-                try:
-                    cleaned_data["token_value"] = self.instance.token_value
-                except (enc_helpers.EncryptionError, ValidationError) as exc:
-                    self.add_error(
-                        "token_value",
-                        str(getattr(exc, "messages", [exc])[0]),
-                    )
+        self._preserve_primary_secrets()
+
+        self._validate_primary_credentials()
+        self._clean_ssh_credentials()
+        self._clean_service_monitoring()
+        self._validate_storage_prerequisites()
+        return cleaned_data
+
+    def _preserve_primary_secrets(self) -> None:
+        """Preserve masked secrets without requesting an absent unused method."""
+        from netbox_proxbox.integrations.openbao import resolve_endpoint_api_secret
+
+        if not self.instance or not self.instance.pk:
+            return
+        for field, clear in (
+            ("password", "clear_password"),
+            ("token_value", "clear_token"),
+        ):
+            if self.cleaned_data.get(clear) or self.cleaned_data.get(field):
+                continue
+            try:
+                self.cleaned_data[field] = resolve_endpoint_api_secret(
+                    self.instance,
+                    field,
+                    token_selected=bool(
+                        (self.cleaned_data.get("token_name") or "").strip()
+                    ),
+                )
+            except (enc_helpers.EncryptionError, ValidationError) as exc:
+                self.add_error(field, str(getattr(exc, "messages", [exc])[0]))
+
+    def _validate_primary_credentials(self) -> None:
+        """Require a password or complete token pair after preservation/clears."""
+        cleaned_data = self.cleaned_data
 
         # Invariant: row must have either a password or a complete (token_name,
         # token_value) pair. Half-tokens are rejected.
@@ -599,8 +615,9 @@ class ProxmoxEndpointForm(ProxmoxEndpointSSHCredentialFormMixin, NetBoxModelForm
             self.add_error("password", msg)
             self.add_error("token_name", msg)
 
-        self._clean_ssh_credentials()
-        self._clean_service_monitoring()
+    def _validate_storage_prerequisites(self) -> None:
+        """Attach selected-store configuration failures to the form fields."""
+        cleaned_data = self.cleaned_data
         from netbox_proxbox.integrations.openbao import (
             validate_write_mode_openbao_requirements,
         )
@@ -628,7 +645,6 @@ class ProxmoxEndpointForm(ProxmoxEndpointSSHCredentialFormMixin, NetBoxModelForm
                         self.add_error(field, message)
             else:
                 self.add_error("allow_writes", exc.messages[0])
-        return cleaned_data
 
     def _clean_service_monitoring(self) -> None:
         """Mirror the model eligibility gate using submitted credential values."""
@@ -681,7 +697,7 @@ class ProxmoxEndpointForm(ProxmoxEndpointSSHCredentialFormMixin, NetBoxModelForm
             if password is None:
                 try:
                     password = getattr(instance, "password", "")
-                except enc_helpers.EncryptionError:
+                except (enc_helpers.EncryptionError, ValidationError):
                     password = ""
             return bool(host and fingerprint and effective_username and password)
 

@@ -1465,7 +1465,14 @@ class ProxmoxMetricsInfluxDBFilterSet(ProxboxModelFilterSet):
 
     class Meta:
         model = ProxmoxMetricsInfluxDB
-        fields = ("id", "endpoint", "proxmox_cluster", "enabled", "name")
+        fields = (
+            "id",
+            "endpoint",
+            "proxmox_cluster",
+            "source_mode",
+            "enabled",
+            "name",
+        )
 
     def search(self, queryset: QuerySet, name: str, value: str) -> QuerySet:
         """Match non-sensitive metrics endpoint metadata."""

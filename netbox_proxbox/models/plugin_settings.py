@@ -495,10 +495,13 @@ class ProxboxPluginSettings(NetBoxModel):
     credential_storage_backend = models.CharField(
         max_length=32,
         choices=CredentialStorageBackendChoices,
-        default=CredentialStorageBackendChoices.OPENBAO,
+        blank=True,
+        default="",
         verbose_name=_("Credential storage backend"),
         help_text=_(
             "Default storage for Proxmox API tokens, passwords, and SSH secrets. "
+            "Automatic uses OpenBao when netbox-openbao is enabled and legacy "
+            "encrypted storage otherwise. Explicit selections never fall back. "
             "OpenBao is recommended for Write mode. Legacy encrypted storage "
             "keeps Fernet-encrypted columns in NetBox."
         ),

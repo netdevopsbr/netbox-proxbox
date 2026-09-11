@@ -46,6 +46,9 @@ def _stub_for_ssh_credentials(
     django.__path__ = []
     django_conf = types.ModuleType("django.conf")
     django_conf.settings = SimpleNamespace(DEBUG=False)
+    django_exceptions = types.ModuleType("django.core.exceptions")
+    django_exceptions.ValidationError = type("ValidationError", (Exception,), {})
+    monkeypatch.setitem(sys.modules, "django.core.exceptions", django_exceptions)
 
     django_shortcuts = types.ModuleType("django.shortcuts")
     django_shortcuts.get_object_or_404 = lambda queryset, **kw: queryset.get(**kw)
@@ -167,6 +170,9 @@ def _stub_for_ssh_credentials(
     np_integrations.__path__ = [str(REPO_ROOT / "netbox_proxbox" / "integrations")]
     np_openbao = types.ModuleType("netbox_proxbox.integrations.openbao")
     np_openbao.endpoint_uses_openbao_storage = lambda endpoint: False
+    np_openbao.resolve_endpoint_api_secret = lambda endpoint, field: getattr(
+        endpoint, field
+    )
 
     for name, mod in [
         ("django", django),

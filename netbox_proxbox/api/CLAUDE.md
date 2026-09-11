@@ -13,6 +13,11 @@
 
 This directory contains the NetBox plugin API surface for ProxBox. It exposes the API root, the nested plugin endpoint namespace, model-backed viewsets and serializers for the plugin's persisted objects, and non-model `APIView` classes that mirror every data-bearing UI page.
 
+Endpoint SSH reuse returns static 503 responses for unresolved stored passwords,
+without forwarding provider errors. A token-only endpoint with no password
+retains its 422 response. Required resolvers remain strict; readiness properties
+used by endpoint list serializers contain expected storage exceptions.
+
 ## Files And Ownership
 
 - [`__init__.py`](./__init__.py): package marker.
@@ -62,7 +67,7 @@ These follow the standard `NetBoxModelViewSet` + `NetBoxRouter` pattern:
 | `ProxboxBranchIntentViewSet` | `branch-intents/` | Full CRUD for default-off branch safety gates; the soft branch reference must resolve and is immutable after creation |
 | `ProxmoxVMTemplateViewSet` | `vm-templates/` | Full CRUD |
 | `Proxbox*SyncStateViewSet` | `sync-state/.../` | Full CRUD typed sidecars for the legacy custom-field payload; additive until proxbox-api switches writers/readers |
-| `ProxboxPluginSettingsViewSet` | `settings/` | GET+PATCH only (singleton); `encryption_key` is write-only on ordinary serializers, ordinary key mutation is rejected while ciphertext exists, all validation/mutation entry frames are redact-all for exception reports, and `/runtime/` retains the existing permission-gated key response for current proxbox-api compatibility plus `encryption_key_configured`. Remove the fallback only with a paired backend migration. |
+| `ProxboxPluginSettingsViewSet` | `settings/` | GET+PATCH only (singleton); `console_url` is the optional origin-only NMS browser-console handoff and is normalized/revalidated even during partial updates; `encryption_key` is write-only on ordinary serializers, ordinary key mutation is rejected while ciphertext exists, all validation/mutation entry frames are redact-all for exception reports, and `/runtime/` retains the existing permission-gated key response for current proxbox-api compatibility plus `encryption_key_configured`. Remove the fallback only with a paired backend migration. See `../../docs/features/browser-console.md` for the console contract. |
 | `NodeSSHCredentialViewSet` | `ssh-credentials/` | Full CRUD |
 | `ProxmoxFirewallSecurityGroupViewSet` | `firewall/security-groups/` | Full CRUD |
 | `ProxmoxFirewallRuleViewSet` | `firewall/rules/` | Full CRUD |

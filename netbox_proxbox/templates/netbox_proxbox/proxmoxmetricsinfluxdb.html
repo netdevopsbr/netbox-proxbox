@@ -27,8 +27,12 @@
             <td>{{ object.proxmox_cluster|linkify }}</td>
           </tr>
           <tr>
+            <th scope="row">{% trans "Metrics Source" %}</th>
+            <td>{{ object.get_source_mode_display }}</td>
+          </tr>
+          <tr>
             <th scope="row">{% trans "InfluxDB URL" %}</th>
-            <td>{{ object.influx_url_display }}</td>
+            <td>{% if object.has_influx_url %}{{ object.influx_url_display }}{% else %}—{% endif %}</td>
           </tr>
           <tr>
             <th scope="row">{% trans "Organization" %}</th>

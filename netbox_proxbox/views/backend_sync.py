@@ -142,6 +142,9 @@ def _packer_template_builds_effectively_allowed(endpoint: ProxmoxEndpoint) -> bo
 
 def _proxmox_backend_payload(endpoint: ProxmoxEndpoint) -> dict[str, object]:
     """JSON body for POST/PUT ``/proxmox/endpoints`` from a ``ProxmoxEndpoint`` row."""
+    from netbox_proxbox.integrations.openbao import resolve_endpoint_api_credentials
+
+    credentials = resolve_endpoint_api_credentials(endpoint)
     tuning = endpoint.effective_connection_tuning()
     return {
         "name": proxmox_backend_name(endpoint),
@@ -150,13 +153,13 @@ def _proxmox_backend_payload(endpoint: ProxmoxEndpoint) -> dict[str, object]:
         "port": int(getattr(endpoint, "port", 8006) or 8006),
         "username": (getattr(endpoint, "username", "") or "root@pam").strip()
         or "root@pam",
-        "password": (getattr(endpoint, "password", "") or "").strip() or None,
+        "password": credentials["password"].strip() or None,
         "verify_ssl": bool(getattr(endpoint, "verify_ssl", False)),
         "timeout": tuning["timeout"],
         "max_retries": tuning["max_retries"],
         "retry_backoff": float(tuning["retry_backoff"]),
         "token_name": (getattr(endpoint, "token_name", "") or "").strip() or None,
-        "token_value": (getattr(endpoint, "token_value", "") or "").strip() or None,
+        "token_value": credentials["token_value"].strip() or None,
         "enabled": bool(getattr(endpoint, "enabled", True)),
         # ``allow_writes`` remains a deliberate manual trust boundary on the
         # backend and is not propagated. Only the effective endpoint-enabled +

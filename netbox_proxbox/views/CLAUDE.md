@@ -13,6 +13,12 @@
 
 This directory implements the plugin's NetBox UI behavior, including dashboard pages, endpoint CRUD views, sync actions, job integration, and status utilities.
 
+Backend Proxmox registration resolves secrets through
+`integrations.openbao.resolve_endpoint_api_credentials`. It does not request an
+absent password for a token-only endpoint or an absent token for password-only
+authentication. Selected authentication and existing references must resolve;
+OpenBao errors never trigger a fallback to another authentication method/store.
+
 The storage detail page routes live per-node content discovery through one
 process-wide four-thread/four-slot pool in `storage_content.py`. A slot is
 reserved before submission and is released only by the worker after the HTTP

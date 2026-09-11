@@ -83,10 +83,19 @@ contract and issue #454 for the bug history.
 - **0027** (v0.0.11+): Converts `VMTaskHistory.pstart` from `IntegerField` to `BigIntegerField` to accommodate large kernel start-time values.
 - **0028** (v0.0.11+): Makes `FastAPIEndpoint.websocket_port` nullable with `default=None`. A data migration resets existing rows where `websocket_port=8800` (the old hardcoded default) to `NULL` so the URL-builder falls back to the HTTP port.
 - **0029** (v0.0.11+): Adds `primary_ip_preference` (`CharField`, choices `ipv4`/`ipv6`, default `ipv4`) to `ProxboxPluginSettings`. Controls which IP family Proxbox selects as the VM primary IP. Databases missing this migration will return HTTP 500 on `GET /plugins/proxbox/settings/` because the ORM selects all model columns. Run `manage.py migrate netbox_proxbox` to apply.
+- **0084**: Adds the optional `ProxboxPluginSettings.console_url` HTTPS-origin field through `add_field_idempotent()`. It stores only the NMS management origin used by the credential-free browser-console handoff; field semantics and all validation boundaries are documented in `../../docs/features/browser-console.md`.
 - **0038_v0_0_16_release** (v0.0.16+): Manually-constructed squash of migrations 0038–0047 (11 files, including the 0044 fork pair). Replaces: `0038_intent_permissions`, `0039_intent_custom_fields`, `0040_apply_job_full`, `0041_deletion_request_full`, `0042_pluginsettings_self_approve`, `0043_pluginsettings_warn_plaintext`, `0044_cloud_image_template`, `0044_overwrite_vm_proxmox_tags`, `0045_proxmoxendpoint_environment`, `0046_pluginsettings_embed_description_metadata`, `0047_legacy_lineage_schema_repair`. The repair RunPython from 0047 is omitted — all tables and columns are already covered by the idempotent ops in the squash.
 - If an install was partially upgraded into the post-squash branch, use the repair migration chain in this directory rather than hand-editing `django_migrations`.
 
 ## Dependencies
+
+`0094_automatic_credential_storage_default` follows the metrics source-mode
+migration and changes the settings field default
+to blank (automatic), preserving every existing row and explicit choice. The
+historical `0083` add-field operation uses the same blank default so fresh
+installations reach conditional runtime resolution. Neither migration selects
+Fernet as a fallback for an explicitly configured OpenBao deployment, and the
+forward change does not move credential material.
 
 - Inbound: Django migration runner uses these files during install and upgrade.
 - Outbound: each migration depends on the historical state of `netbox_proxbox.models` and relevant NetBox app migrations (see `dependencies` in each file).

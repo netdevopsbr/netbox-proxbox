@@ -89,6 +89,10 @@ This repository packages the `netbox_proxbox` NetBox plugin. The plugin adds end
 
 The current plugin config lives in [`netbox_proxbox/__init__.py`](./netbox_proxbox/__init__.py). It declares plugin version `0.0.26.post4` and sources its backward-compatible NetBox contract from [`netbox_proxbox/compat.py`](./netbox_proxbox/compat.py): **stable** `4.5.8` through `4.7.0`, validated across the established 4.5/4.6 cells and official v4.7.0 GA. `min_version`/`max_version` are `PLUGIN_MIN_VERSION`/`PLUGIN_MAX_VERSION`. Pre-release builds remain advisory-only and do not change the GA support promise. `compat.py` is vendored byte-identically across netbox-proxbox, netbox-ceph, netbox-packer, netbox-pbs, and netbox-pdm; change it in one repo and you must change it in all five. It must not import Django at module scope, because NetBox imports it while `netbox/settings.py` is still executing. Current backend-runtime pairing: netbox-proxbox 0.0.26.post4 <-> proxbox-api 0.0.21.post7 <-> proxmox-sdk 0.0.13 <-> netbox-sdk 0.0.10. This netbox-sdk version is proxbox-api's REST dependency only and does not provide the semantic MCP bridge. The `0.0.26.post4` maintenance release aligns the migration helper with the currently deployed production digest while retaining the browser-console handoff, Proxmox metrics, and human-only soft-deleted VM purge surface from `0.0.26.post2`. The previous `0.0.26.post1` release introduced the NetBox 4.7.0 GA release identity. The previous `0.0.25` release moved **Sync Jobs** to a dedicated Proxbox-only page at `/plugins/proxbox/jobs/`, anonymized the failed-job bug-report export, and consolidated the credential-redaction vocabulary into one module shared by the job-log redactor and the public scrubber. The previous `0.0.24` release added NetBox 4.6.6 certification, settings/storage compatibility fixes, blank-key encryption recovery, and immutable Gitea-first release provenance while retaining bounded endpoint auto-configuration and the universal `guest_os_model` behavior. Existing backend rows authorize only their exact persisted target; rowless discovery is restricted to configured or same-site targets derived from NetBox's trusted public origin, and any unproved target remains pending. The previous stable `0.0.23.post2` release introduced bounded endpoint auto-configuration. `proxbox-api` is not a Python dependency of this plugin; the services communicate over HTTP.
 
+## Browser Console Handoff
+
+Read [`docs/features/browser-console.md`](docs/features/browser-console.md) before changing `ProxboxPluginSettings.console_url`, its model/form/API validators, migration `0084`, `template_content.py::_console_base_url()`, `_synced_console_vm_type()`, `ProxboxVirtualMachineTemplateExtension.console_button()`, the console button template, or their tests. This plugin owns only a credential-free HTTPS navigation handoff. It requires typed VM sync state and builds `/virtualization/{virtual-machines|lxc-containers}/<NetBox VM pk>`; it does not append `?tab=console`, create a ticket, authorize the live session, or relay traffic. Keep all Proxmox topology, ticket, authentication, and TLS details out of the URL and browser context.
+
 **Companion repos (cross-link map):**
 
 - Backend service: [`emersonfelipesp/proxbox-api`](https://github.com/emersonfelipesp/proxbox-api) — the full v0.0.17 feature set (firewall model scaffolding, intent tag helpers at `PUT /intent/tag-pending-deletion` and `PUT /intent/untag-pending-deletion`, HA REST shim) requires `proxbox-api >= 0.0.13`. HA endpoints alone require `>= 0.0.12`. Firecracker Cloud provisioning uses proxbox-api `/cloud/firecracker/provision` and `/cloud/firecracker/provision/stream` after this plugin creates or exposes the NetBox-side `FirecrackerMicroVM` record. See its [`docs/api/cluster-ha.md`](https://github.com/emersonfelipesp/proxbox-api/blob/main/docs/api/cluster-ha.md) for the upstream HA contract this plugin proxies.
@@ -155,11 +159,24 @@ The current plugin config lives in [`netbox_proxbox/__init__.py`](./netbox_proxb
   custom fields remain operational.
 - Companion endpoint models: `PBSEndpoint`, `PDMEndpoint`, `PDMRemote` for Proxmox Backup Server and Datacenter Manager inventory.
 - SSH and hardware discovery: `NodeSSHCredential` stores per-node SSH credentials for the optional hardware-discovery pass.
-- **Credential storage (OpenBao default, legacy Fernet opt-in).** Plugin Settings
-  `credential_storage_backend` defaults to `openbao`. With that backend,
+- **Credential storage (conditional automatic default).** Plugin Settings
+  `credential_storage_backend` defaults to blank: OpenBao when `netbox_openbao`
+  is enabled in `PLUGINS`, otherwise legacy Fernet. Explicit endpoint and saved
+  plugin choices always win, including fail-closed OpenBao selections when the
+  plugin is disabled. Migration 0094 preserves existing saved choices; the
+  corrected 0083 default supports fresh installations. Required OpenBao secret
+  resolvers reject missing references and invalid material with a secret-safe
+  endpoint/field error. Backend registration and export use the API-credential
+  selector to omit only an absent, unselected authentication method. This
+  compatibility default never supplies a fallback for strict audited writes.
+  SSH readiness and list serialization contain expected storage failures, and
+  monitoring isolates each endpoint's eligibility failure. Edit preservation
+  uses submitted authentication intent after clears, retains the original read
+  backend, and never hides an existing unresolved credential reference.
+  With OpenBao,
   `ProxmoxEndpoint` API tokens, passwords, and SSH secrets are written through
   **netbox-openbao** (`netbox_proxbox/integrations/openbao.py`) and referenced
-  by FK — not duplicated in `*_enc` columns. Enabling `allow_writes=True` while
+  by UUID — not duplicated in `*_enc` columns. Enabling `allow_writes=True` while
   OpenBao storage is effective requires netbox-openbao installed, a default
   `SecretEngine`, and at least one `CredentialPolicy`. Set
   `credential_storage_backend=legacy_encrypted` (plugin-wide or per endpoint) to

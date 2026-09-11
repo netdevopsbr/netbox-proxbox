@@ -195,6 +195,11 @@ def _stub_saved_service_monitoring(
 
 
 def _load_proxmox_endpoint(monkeypatch):
+    # Backend-sync harnesses intentionally replace the storage adapter. Model
+    # validation needs the real adapter, not a leaked transport-only stand-in.
+    monkeypatch.delitem(
+        sys.modules, "netbox_proxbox.integrations.openbao", raising=False
+    )
     _stub_proxmox_endpoint_dependencies(monkeypatch)
     spec = importlib.util.spec_from_file_location(
         "_prox_endpoint_under_test", MODEL_PATH

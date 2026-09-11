@@ -12,7 +12,10 @@ from netbox_proxbox.models import (
     ProxmoxEndpoint,
     ProxmoxMetricsInfluxDB,
 )
-from netbox_proxbox.models.proxmox_metrics import masked_influx_url
+from netbox_proxbox.models.proxmox_metrics import (
+    METRICS_SOURCE_MODES,
+    masked_influx_url,
+)
 from netbox_proxbox.models.plugin_settings import ProxboxPluginSettings
 from netbox_proxbox.utils import encryption as enc_helpers
 from netbox_proxbox.utils.metrics import (
@@ -42,7 +45,8 @@ class ProxmoxMetricsInfluxDBForm(NetBoxModelForm):
         widget=forms.PasswordInput(render_value=False),
         label=_("InfluxDB query token"),
         help_text=_(
-            "Required on create or when enabling. Leave blank on edit to keep the stored token."
+            "Required on create or enable when the source includes InfluxDB. "
+            "Leave blank on edit to keep the stored token."
         ),
     )
     comments = CommentField()
@@ -53,6 +57,7 @@ class ProxmoxMetricsInfluxDBForm(NetBoxModelForm):
             "name",
             "endpoint",
             "proxmox_cluster",
+            "source_mode",
             "influx_url",
             "org",
             "bucket",
@@ -66,7 +71,7 @@ class ProxmoxMetricsInfluxDBForm(NetBoxModelForm):
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         instance = getattr(self, "instance", None)
-        if instance and getattr(instance, "pk", None):
+        if instance and getattr(instance, "pk", None) and instance.influx_url:
             display_url = masked_influx_url(instance.influx_url)
             if display_url == "********":
                 self.initial["influx_url"] = ""
@@ -122,6 +127,10 @@ class ProxmoxMetricsInfluxDBFilterForm(NetBoxModelFilterSetForm):
         queryset=ProxmoxCluster.objects.all(), required=False
     )
     name = forms.CharField(required=False)
+    source_mode = forms.ChoiceField(
+        required=False,
+        choices=(("", _("All source modes")), *METRICS_SOURCE_MODES),
+    )
     enabled = forms.BooleanField(required=False)
 
 
@@ -134,7 +143,11 @@ class ProxmoxMetricsInfluxDBQueryForm(forms.Form):
         help_text=_("Flux relative duration or RFC3339 start time."),
     )
     time_stop = forms.CharField(required=False, initial="now()")
-    measurement = forms.CharField(required=True, max_length=128)
+    measurement = forms.CharField(
+        required=False,
+        max_length=128,
+        help_text=_("Required when the configured source includes InfluxDB."),
+    )
     field = forms.CharField(required=False, max_length=128)
     node = forms.CharField(required=False, max_length=128)
     vmid = forms.IntegerField(required=False, min_value=0)

@@ -977,7 +977,7 @@ class ProxmoxEndpoint(EndpointBase):
         if self.ssh_credential_source == SSH_CRED_SOURCE_REUSE:
             try:
                 password = self.password
-            except enc_helpers.EncryptionError:
+            except (enc_helpers.EncryptionError, ValidationError):
                 return False
             return bool(
                 self.ssh_host
@@ -1120,27 +1120,7 @@ class ProxmoxEndpoint(EndpointBase):
                     {"__all__": SERVICE_MONITORING_INELIGIBLE_MESSAGE}
                 )
         if self.ssh_credential_source == SSH_CRED_SOURCE_REUSE:
-            errors: dict[str, str] = {}
-            try:
-                password_available = bool(self.password)
-            except enc_helpers.EncryptionError:
-                password_available = False
-                errors["ssh_credential_source"] = (
-                    "The stored endpoint password cannot be decrypted. Enter a "
-                    "replacement password or use encrypted-secret recovery."
-                )
-            if not password_available and "ssh_credential_source" not in errors:
-                errors["ssh_credential_source"] = (
-                    "Reusing endpoint credentials for SSH requires a stored "
-                    "endpoint password; token-only endpoints cannot be reused."
-                )
-            if not self.ssh_known_host_fingerprint:
-                errors["ssh_known_host_fingerprint"] = (
-                    "Pinned host-key fingerprint is required when reusing "
-                    "endpoint credentials for SSH."
-                )
-            if errors:
-                raise ValidationError(errors)
+            self._validate_reused_ssh_credentials()
             return
 
         has_any_ssh = any(
@@ -1165,6 +1145,36 @@ class ProxmoxEndpoint(EndpointBase):
             errors["ssh_auth_method"] = "Key authentication requires a private key."
         if self.ssh_auth_method == AUTH_METHOD_PASSWORD and not self.ssh_password_enc:
             errors["ssh_auth_method"] = "Password authentication requires a password."
+        if errors:
+            raise ValidationError(errors)
+
+    def _validate_reused_ssh_credentials(self) -> None:
+        """Attach unavailable reused passwords to the SSH-source form field."""
+        errors: dict[str, str] = {}
+        try:
+            password_available = bool(self.password)
+        except enc_helpers.EncryptionError:
+            password_available = False
+            errors["ssh_credential_source"] = (
+                "The stored endpoint password cannot be decrypted. Enter a "
+                "replacement password or use encrypted-secret recovery."
+            )
+        except ValidationError:
+            password_available = False
+            errors["ssh_credential_source"] = (
+                "The stored endpoint password cannot be resolved. Check the "
+                "configured credential store or enter a replacement password."
+            )
+        if not password_available and "ssh_credential_source" not in errors:
+            errors["ssh_credential_source"] = (
+                "Reusing endpoint credentials for SSH requires a stored "
+                "endpoint password; token-only endpoints cannot be reused."
+            )
+        if not self.ssh_known_host_fingerprint:
+            errors["ssh_known_host_fingerprint"] = (
+                "Pinned host-key fingerprint is required when reusing "
+                "endpoint credentials for SSH."
+            )
         if errors:
             raise ValidationError(errors)
 

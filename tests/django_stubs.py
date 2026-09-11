@@ -82,9 +82,19 @@ def django_stub_modules(*, models_module=None) -> dict[str, types.ModuleType]:
     django_utils_crypto = types.ModuleType("django.utils.crypto")
     django_utils_crypto.salted_hmac = salted_hmac
 
+    # Backend-sync tests isolate transport/identity behavior from storage.
+    # The real storage adapter and optional-auth selection are exercised by
+    # test_openbao_credential_integration, which replaces this narrow stand-in.
+    openbao = types.ModuleType("netbox_proxbox.integrations.openbao")
+    openbao.resolve_endpoint_api_credentials = lambda endpoint: {
+        "password": getattr(endpoint, "password", "") or "",
+        "token_value": getattr(endpoint, "token_value", "") or "",
+    }
+
     return {
         "django.db": django_db,
         "django.utils.crypto": django_utils_crypto,
+        "netbox_proxbox.integrations.openbao": openbao,
     }
 
 

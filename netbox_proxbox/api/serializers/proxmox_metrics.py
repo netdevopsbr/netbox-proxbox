@@ -100,6 +100,7 @@ class ProxmoxMetricsInfluxDBSerializer(NetBoxModelSerializer):
             "name",
             "endpoint",
             "proxmox_cluster",
+            "source_mode",
             "influx_url",
             "org",
             "bucket",
@@ -132,7 +133,9 @@ class ProxmoxMetricsInfluxDBQuerySerializer(serializers.Serializer):
 
     time_start = serializers.CharField(required=False, default="-1h", max_length=64)
     time_stop = serializers.CharField(required=False, default="now()", max_length=64)
-    measurement = serializers.CharField(max_length=128)
+    measurement = serializers.CharField(
+        required=False, allow_blank=True, max_length=128
+    )
     field = serializers.CharField(required=False, allow_blank=True, max_length=128)
     node = serializers.CharField(required=False, allow_blank=True, max_length=128)
     vmid = serializers.IntegerField(required=False, min_value=0)

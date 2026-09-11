@@ -6,7 +6,7 @@
   <h5 class="card-header">{% trans "Proxmox Metrics" %}: {{ object.name }}</h5>
   <div class="card-body">
     <p class="text-muted">
-      {% trans "Queries are sent by NetBox to proxbox-api. The browser never connects to InfluxDB and never receives the query token." %}
+      {% trans "Queries are sent by NetBox to proxbox-api using the persisted source policy. The browser never connects to a provider and never receives credentials." %}
     </p>
     <form method="get" class="row gy-2 gx-3 align-items-end">
       <div class="col-md-3">{{ form.time_start.as_field_group }}</div>
@@ -33,9 +33,22 @@
 {% endif %}
 
 {% if metrics %}
+{% if metrics.partial %}
+<div class="alert alert-warning" role="alert">
+  {% trans "One metrics source failed. The available source is shown below." %}
+</div>
+{% endif %}
 <div class="card">
-  <h5 class="card-header">{% trans "Query result" %}</h5>
+  <h5 class="card-header">
+    {% trans "Query result" %}
+    <span class="badge text-bg-secondary">{{ object.get_source_mode_display }}</span>
+  </h5>
   <div class="card-body">
+    {% if metrics.conflict_count %}
+    <p class="text-warning">
+      {% blocktrans count count=metrics.conflict_count %}InfluxDB won {{ count }} conflicting sample.{% plural %}InfluxDB won {{ count }} conflicting samples.{% endblocktrans %}
+    </p>
+    {% endif %}
     {% if metrics.rows %}
     <div class="table-responsive">
       <table class="table table-sm table-hover">

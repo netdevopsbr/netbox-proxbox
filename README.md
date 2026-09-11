@@ -259,7 +259,10 @@ Paired with backend: `proxbox-api 0.0.21.post6`.
 
 - **Production browser console handoff.** NetBox virtual-machine detail pages
   now compose the console extension through NetBox's supported `buttons()`
-  hook and open the corresponding NMS QEMU or LXC console in a new tab.
+  hook and open the corresponding NMS QEMU or LXC guest detail in a new tab;
+  the operator then selects the Console tab. See the complete configuration,
+  visibility, URL-construction, security, and test guide in
+  [`docs/features/browser-console.md`](docs/features/browser-console.md).
 - **Proxmox metrics.** Adds the independently configured InfluxDB metrics UI,
   API, settings, and architecture documentation.
 - **Audited cleanup.** Adds the human-only page for reviewing and purging

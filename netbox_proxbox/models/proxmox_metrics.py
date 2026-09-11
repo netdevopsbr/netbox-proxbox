@@ -13,6 +13,11 @@ from django.utils.translation import gettext_lazy as _
 from netbox.models import NetBoxModel
 
 CREDENTIAL_FREE_HTTP_URL_RE = r"^[Hh][Tt][Tt][Pp][Ss]://[^/?#@\s]+(?:/[^?#\s]*)?$"
+METRICS_SOURCE_MODES = (
+    ("influx", _("InfluxDB")),
+    ("pull", _("Proxmox API pull")),
+    ("reconciled", _("Reconciled InfluxDB and pull")),
+)
 MASKED_SECRET = "********"
 MASKED_INFLUX_URL = MASKED_SECRET
 _INFLUX_URL_VALIDATOR = URLValidator(schemes=("https",))
@@ -20,10 +25,10 @@ _INFLUX_URL_VALIDATOR = URLValidator(schemes=("https",))
 
 def masked_influx_url(value: str | None) -> str:
     """Return only a valid credential-free HTTPS InfluxDB base URL."""
-    if (
-        not isinstance(value, str)
-        or not value
-        or not re.fullmatch(CREDENTIAL_FREE_HTTP_URL_RE, value)
+    if value == "":
+        return ""
+    if not isinstance(value, str) or not re.fullmatch(
+        CREDENTIAL_FREE_HTTP_URL_RE, value
     ):
         return MASKED_INFLUX_URL
     try:
@@ -34,6 +39,48 @@ def masked_influx_url(value: str | None) -> str:
     if "@" in parsed_url.netloc or parsed_url.query or parsed_url.fragment:
         return MASKED_INFLUX_URL
     return value
+
+
+def _validate_influx_configuration(value: str, *, required: bool) -> None:
+    if required and not value:
+        raise ValidationError(
+            {"influx_url": _("An InfluxDB URL is required for this source mode.")}
+        )
+    if not value:
+        return
+    try:
+        parsed_url = urlsplit(value)
+    except ValueError:
+        parsed_url = None
+    unsafe = (
+        not re.fullmatch(CREDENTIAL_FREE_HTTP_URL_RE, value)
+        or parsed_url is None
+        or "@" in parsed_url.netloc
+        or bool(parsed_url.query)
+        or bool(parsed_url.fragment)
+    )
+    if unsafe:
+        raise ValidationError(
+            {
+                "influx_url": _(
+                    "Use the InfluxDB base URL without userinfo, query, or fragment."
+                )
+            }
+        )
+
+
+def _validate_cluster_endpoint(mapping: ProxmoxMetricsInfluxDB) -> None:
+    if not mapping.proxmox_cluster_id or not mapping.endpoint_id:
+        return
+    cluster_endpoint_id = getattr(mapping.proxmox_cluster, "endpoint_id", None)
+    if cluster_endpoint_id and cluster_endpoint_id != mapping.endpoint_id:
+        raise ValidationError(
+            {
+                "proxmox_cluster": _(
+                    "The selected Proxmox cluster must belong to the selected endpoint."
+                )
+            }
+        )
 
 
 class ProxmoxMetricsInfluxDB(NetBoxModel):
@@ -59,8 +106,18 @@ class ProxmoxMetricsInfluxDB(NetBoxModel):
         verbose_name=_("Proxmox cluster"),
         help_text=_("Proxmox cluster associated with this InfluxDB bucket."),
     )
+    source_mode = models.CharField(
+        max_length=16,
+        choices=METRICS_SOURCE_MODES,
+        default="influx",
+        verbose_name=_("Metrics source"),
+        help_text=_(
+            "Select InfluxDB, direct Proxmox API pull, or deterministic reconciliation."
+        ),
+    )
     influx_url = models.URLField(
         max_length=255,
+        blank=True,
         verbose_name=_("InfluxDB URL"),
         help_text=_(
             "Credential-free InfluxDB base URL, for example https://influxdb.example:8086."
@@ -104,11 +161,14 @@ class ProxmoxMetricsInfluxDB(NetBoxModel):
                 name="netbox_proxbox_metrics_influxdb_unique_cluster_name",
             ),
             models.CheckConstraint(
-                condition=models.Q(query_token_enc__gt="") | models.Q(enabled=False),
+                condition=models.Q(source_mode="pull")
+                | models.Q(query_token_enc__gt="")
+                | models.Q(enabled=False),
                 name="netbox_proxbox_metrics_influxdb_query_token_configured",
             ),
             models.CheckConstraint(
-                condition=models.Q(enabled=False)
+                condition=models.Q(source_mode="pull")
+                | models.Q(enabled=False)
                 | models.Q(influx_url__regex=CREDENTIAL_FREE_HTTP_URL_RE),
                 name="netbox_proxbox_metrics_influxdb_url_is_safe",
             ),
@@ -166,6 +226,11 @@ class ProxmoxMetricsInfluxDB(NetBoxModel):
         """Fail-closed rendering value for :attr:`influx_url`."""
         return masked_influx_url(self.influx_url)
 
+    @property
+    def has_influx_url(self) -> bool:
+        """Return whether a non-secret InfluxDB URL is configured."""
+        return bool(self.influx_url)
+
     def get_absolute_url(self) -> str:
         try:
             return reverse(
@@ -176,28 +241,17 @@ class ProxmoxMetricsInfluxDB(NetBoxModel):
 
     def clean(self) -> None:
         super().clean()
-        if self.influx_url:
-            try:
-                parsed_url = urlsplit(self.influx_url)
-            except ValueError:
-                parsed_url = None
-            if (
-                not re.fullmatch(CREDENTIAL_FREE_HTTP_URL_RE, self.influx_url)
-                or parsed_url is None
-                or "@" in parsed_url.netloc
-                or parsed_url.query
-                or parsed_url.fragment
-            ):
-                raise ValidationError(
-                    {
-                        "influx_url": _(
-                            "Use the InfluxDB base URL without userinfo, query, or fragment."
-                        )
-                    }
-                )
+        uses_influx = self.source_mode in {"influx", "reconciled"}
+        _validate_influx_configuration(
+            self.influx_url, required=self.enabled and uses_influx
+        )
         from netbox_proxbox.services.encryption_recovery import ciphertext_state
 
-        if self.enabled and ciphertext_state(self.query_token_enc) != "configured":
+        if (
+            self.enabled
+            and uses_influx
+            and ciphertext_state(self.query_token_enc) != "configured"
+        ):
             raise ValidationError(
                 {
                     "query_token_enc": _(
@@ -205,13 +259,4 @@ class ProxmoxMetricsInfluxDB(NetBoxModel):
                     )
                 }
             )
-        if self.proxmox_cluster_id and self.endpoint_id:
-            cluster_endpoint_id = getattr(self.proxmox_cluster, "endpoint_id", None)
-            if cluster_endpoint_id and cluster_endpoint_id != self.endpoint_id:
-                raise ValidationError(
-                    {
-                        "proxmox_cluster": _(
-                            "The selected Proxmox cluster must belong to the selected endpoint."
-                        )
-                    }
-                )
+        _validate_cluster_endpoint(self)

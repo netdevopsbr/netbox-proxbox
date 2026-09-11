@@ -196,8 +196,9 @@ def test_proxmox_endpoint_form_hides_secret_fields_and_preserves_existing_values
     assert "forms.PasswordInput(" in contents
     assert "render_value=False" in contents
     assert "Leave blank to keep the current value." in contents
-    assert 'cleaned_data["password"] = self.instance.password' in contents
-    assert 'cleaned_data["token_value"] = self.instance.token_value' in contents
+    # Behavioral preservation/clear coverage lives in the credential-clearing
+    # suite; the adapter must select optional OpenBao fields before revealing.
+    assert "self._preserve_primary_secrets()" in contents
 
 
 def test_proxmox_endpoint_form_exposes_write_and_ssh_credential_controls():

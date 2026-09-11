@@ -57,35 +57,32 @@ reconcile finished `RPCExecution.result` payloads into `ProxmoxServiceSample`,
 `reachable=false` result means the target was down or unreachable; it is recorded
 without updating the last-success heartbeat.
 
-## InfluxDB Metrics Integration
+## Proxmox Metrics Integration
 
-The InfluxDB integration is a bounded, read-only metrics query path for a
-Proxmox cluster. It does not make NetBox a metrics writer: Proxmox continues to
-write measurements to InfluxDB, while netbox-proxbox provides a controlled way
-to query those measurements from the NetBox operator surface.
+The integration provides bounded, read-only metrics for a Proxmox cluster.
+Each mapping selects InfluxDB, direct Proxmox API pull, or deterministic
+reconciliation of both sources. NetBox does not become a metrics writer.
 
 ### How the integration works
 
-The browser calls NetBox only. The plugin resolves the selected
-`ProxmoxMetricsInfluxDB` mapping, decrypts its query token in the NetBox
-process, and sends a short-lived structured request to the configured
-`proxbox-api` endpoint. proxbox-api validates the request, builds the Flux query,
-connects to InfluxDB, and returns normalized columns and rows to NetBox.
+The browser calls NetBox only. The plugin resolves the selected mapping and
+sends short-lived structured requests to `proxbox-api` according to
+`source_mode`. The backend either builds bounded Flux or invokes the fixed
+Proxmox `cluster/metrics/export` operation. The plugin canonicalizes and merges
+the returned samples.
 
 ```text
 NetBox UI or plugin API
         │ mapping id + bounded filters
         ▼
-netbox-proxbox ── authenticated request + decrypted token ──► proxbox-api
-                                                               │
-                                                               │ validated Flux
-                                                               ▼
-                                                            InfluxDB
+netbox-proxbox ── authenticated bounded request ──► proxbox-api
+                                                          ├──► InfluxDB
+                                                          └──► Proxmox API
 ```
 
 The trust boundary is deliberate:
 
-- InfluxDB credentials are never sent to the browser, returned by the API, or
+- Provider credentials are never sent to the browser, returned by the API, or
   written to ordinary change-log snapshots.
 - Callers submit structured filters, not arbitrary Flux. The backend accepts a
   measurement, optional field/node/VM/tag filters, a bounded time window, an
@@ -93,10 +90,13 @@ The trust boundary is deliberate:
 - The InfluxDB base URL must be credential-free HTTPS. The backend validates the
   resolved destination against the shared SSRF policy, disables redirects, and
   verifies TLS by default.
-- A backend response is normalized and capped at 1 MiB. The default row limit
+- Each backend response is normalized and capped at 1 MiB. The final default row limit
   is 500 and the maximum is 5,000. Upstream query timeout is 10 seconds.
-- Disabled mappings, disabled Proxmox endpoints, missing encryption keys, and
-  undecryptable tokens fail closed.
+- Pull-only mappings do not require or decrypt an InfluxDB token. Disabled
+  mappings, disabled Proxmox endpoints, and missing required credentials fail
+  closed.
+- Reconciled mode returns the available source with `partial=true` if one source
+  fails. Exact duplicates collapse, and InfluxDB wins conflicting identities.
 
 `netbox-monitoring`, `netbox-nms`, and `netbox-rpc` are not runtime
 dependencies of this integration. They can consume or complement the metrics
@@ -112,11 +112,12 @@ plugin model and API fields exactly.
 #### 1. Prepare the backend and encryption key
 
 1. Install or deploy a `proxbox-api` version that exposes
-   `/proxmox/metrics/influx/query`.
+   `/proxmox/metrics/influx/query` and `/proxmox/metrics/pull/query`.
 2. In **Plugins → Proxbox → FastAPI Endpoints**, configure the backend URL,
    authentication key, and TLS verification. The endpoint must be enabled and
    reachable from the NetBox process.
-3. In **Plugins → Proxbox → Plugin Settings**, set **Encryption key** to a
+3. If the selected mode includes InfluxDB, set **Encryption key** in **Plugins
+   → Proxbox → Plugin Settings** to a
    Fernet key. This key protects the plugin-owned InfluxDB query token in the
    NetBox database; it is not the proxbox-api authentication key or
    `PROXBOX_ENCRYPTION_KEY`.
@@ -150,27 +151,30 @@ Open **Plugins → Proxbox → InfluxDB Metrics → Add** and fill in:
 | **Name** (`name`) | Operator label for this mapping; defaults to `default`. |
 | **Proxmox endpoint** (`endpoint`) | The Proxmox endpoint whose cluster writes the measurements. |
 | **Proxmox cluster** (`proxmox_cluster`) | The cluster associated with the InfluxDB bucket. It must belong to the selected endpoint. |
-| **InfluxDB URL** (`influx_url`) | Credential-free HTTPS base URL, such as `https://influxdb.example:8086`. Do not include userinfo, a query string, or a fragment. |
+| **Metrics source** (`source_mode`) | `influx`, `pull`, or `reconciled`. |
+| **InfluxDB URL** (`influx_url`) | Required for `influx` and `reconciled`; omitted for `pull`. Use a credential-free HTTPS base URL. |
 | **InfluxDB organization** (`org`) | InfluxDB v2 organization; default `nmulticloud`. |
 | **InfluxDB bucket** (`bucket`) | Bucket containing the Proxmox measurements; default `proxmox`. |
 | **Measurement prefix** (`measurement_prefix`) | Optional prefix automatically added to the requested measurement. Leave blank unless the writer uses one. |
-| **InfluxDB query token** (`query_token`) | A token with the minimum read permission for the selected bucket. It is write-only and is encrypted before persistence. |
+| **InfluxDB query token** (`query_token`) | Required for `influx` and `reconciled`; omitted for `pull`. It is write-only and encrypted before persistence. |
 | **Verify TLS** (`verify_tls`) | Keep enabled for normal HTTPS deployments. Disable only for a controlled environment where the backend's insecure-TLS override permits it. |
 | **Enabled** (`enabled`) | Enable only after the URL and token are valid. Disabled mappings remain inventory-only and cannot be queried. |
 | **Comments** (`comments`) | Optional operator notes. Never record the token or other secret material. |
 
-Saving the form validates the URL, endpoint/cluster relationship, encryption
-key, and token requirement. On later edits, leave the token blank to retain the
-stored credential. The UI shows only a configured/not-configured state; it does
-not redisplay the token.
+Saving validates the endpoint/cluster relationship and the credentials required
+by the selected source. On later edits, leave the token blank to retain it.
 
 #### 4. Query the metrics
 
 Open the mapping detail page and choose **View metrics**. Enter the required
-measurement and, when needed, a field, node, VM ID, tag key/value, time range,
+measurement when the source includes InfluxDB and, when needed, a field, node, VM ID, tag key/value, time range,
 and aggregation. Supported aggregation functions are `count`, `first`, `last`,
 `max`, `mean`, `min`, and `sum`; `aggregation_every` and
-`aggregation_function` must be supplied together.
+`aggregation_function` must be supplied together. Aggregation is rejected for
+`pull` and `reconciled` modes because pull samples are not pre-aggregated.
+Tag filters and combined node-plus-VM filters are also rejected when pull data
+participates because Proxmox's pull rows do not carry those dimensions. A node
+filter in pull modes selects the node object's metrics.
 
 Use a narrow time window and field filter first. The result reports the query
 window, row count, truncation status, normalized columns, and rows. A truncated
@@ -192,7 +196,8 @@ GET    /api/plugins/proxbox/metrics-influxdb/{id}/data/
 ```
 
 `query_token` is accepted only as a write-only input. A create or replacement
-request must include it; an update may omit it to retain the existing token.
+request must include it when `source_mode` is `influx` or `reconciled`; an
+update may omit it to retain the existing token. Pull-only mappings omit it.
 The response exposes `query_token_configured` and
 `credential_encryption_state`, never ciphertext or plaintext.
 
@@ -214,7 +219,9 @@ curl -G \
 The API accepts the same bounded fields as the UI: `time_start`, `time_stop`,
 `measurement`, `field`, `node`, `vmid`, `tag_key`, `tag_value`,
 `aggregation_every`, `aggregation_function`, and `limit`. It does not accept a
-Flux string or direct InfluxDB connection parameters.
+Flux string, direct provider connection parameters, or a Proxmox API path. The
+response includes canonical rows, source provenance, `source_status`,
+`deduplicated_count`, `conflict_count`, and `partial`.
 
 ### Troubleshooting
 
@@ -234,4 +241,4 @@ credential-free HTTPS URL and a new query token, verify the mapping, and enable
 it again. The migration warning never records discarded secret values.
 
 For endpoint routes, field names, filters, and normalized response details, see
-[Infrastructure API](../api/infrastructure.md#proxmox-influxdb-metrics-endpoint).
+[Infrastructure API](../api/infrastructure.md#proxmox-metrics-endpoint).
