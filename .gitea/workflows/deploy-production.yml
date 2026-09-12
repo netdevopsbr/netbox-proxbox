@@ -272,31 +272,19 @@ jobs:
       - name: Require healthy production status
         run: |
           set -euo pipefail
-          # status-app prints service state and suppresses their exit codes, so
-          # calling it bare asserts nothing. Proxbox sync runs on netbox-rq --
-          # a deploy that leaves the worker stopped breaks the very feature
-          # being shipped while the web endpoint looks fine.
-          HEALTH_ATTEMPTS=30
-          HEALTH_SLEEP_SECONDS=5
-          attempt=1
-          while :; do
-            report="$(/opt/nmulticloud/deploy/bin/status-app netbox)"
-            printf 'status-app attempt %s/%s\n' "$attempt" "$HEALTH_ATTEMPTS"
-            printf '%s\n' "$report"
-            # The report reads `systemd=netbox.service:active,netbox-rq.service:...`,
-            # so the first entry is preceded by `=` rather than a comma. Anchoring
-            # on `(^|,)` alone silently fails every deploy.
-            if printf '%s' "$report" | grep -Eq '[=,]netbox\.service:active(,|$)' \
-              && printf '%s' "$report" | grep -Eq '[=,]netbox-rq\.service:active(,|$)'; then
-              break
-            fi
-            if (( attempt >= HEALTH_ATTEMPTS )); then
-              echo "production services did not reach active state after ${HEALTH_ATTEMPTS} attempts" >&2
-              exit 1
-            fi
-            attempt=$(( attempt + 1 ))
-            sleep "$HEALTH_SLEEP_SECONDS"
-          done
+          # healthcheck-app is the same gate deploy-netbox-plugin-package uses:
+          # HTTP liveness plus Django checks against the Compose netbox service.
+          # status-app still prints systemd/compose diagnostics but must not
+          # gate the deploy -- Docker production keeps netbox.service activating
+          # while nmc-netbox-netbox-* containers are Up/healthy. Proxbox sync
+          # runs on netbox-rq, so assert that worker via Compose as well.
+          /opt/nmulticloud/deploy/bin/healthcheck-app netbox
+          source /opt/nmulticloud/deploy/bin/nmc-deploy-lib
+          if ! compose_cmd netbox ps --status running --services | grep -qx 'netbox-rq'; then
+            echo "netbox-rq compose service is not running" >&2
+            exit 1
+          fi
+          /opt/nmulticloud/deploy/bin/status-app netbox || true
 
       - name: Publish host-issued successful-deployment attestation
         if: ${{ env.RESOLVED_SOURCE == 'latest_package' }}

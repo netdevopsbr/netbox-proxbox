@@ -624,24 +624,18 @@ def test_production_deploy_cannot_report_success_without_deploying() -> None:
 def test_production_health_gate_actually_asserts_service_state() -> None:
     workflow = _read(GITEA_DEPLOY_WORKFLOW)
 
-    # `status-app netbox` prints service state and suppresses their exit codes,
-    # so calling it bare asserts nothing. Proxbox sync runs on netbox-rq: a
-    # deploy that leaves the worker stopped breaks the feature being shipped
-    # while the web endpoint still answers.
+    # healthcheck-app is the deploy script gate; status-app is diagnostic only.
+    # Proxbox sync runs on netbox-rq, so the gate also asserts the Compose worker.
     start = workflow.index("- name: Require healthy production status")
     gate = workflow[start : workflow.index("- name:", start + 1)]
-    # Scoped to the gate: the failure-reporting step calls status-app bare on
-    # purpose, as a diagnostic rather than an assertion.
     assert "run: /opt/nmulticloud/deploy/bin/status-app netbox\n" not in gate
-    assert "[=,]netbox\\.service:active" in gate
-    assert "[=,]netbox-rq\\.service:active" in gate
-    assert "HEALTH_ATTEMPTS=30" in gate
-    assert "HEALTH_SLEEP_SECONDS=5" in gate
-    assert 'sleep "$HEALTH_SLEEP_SECONDS"' in gate
-    assert "while :" in gate
-    assert "printf 'status-app attempt %s/%s\\n'" in gate
-    assert "attempt=$(( attempt + 1 ))" in gate
-    assert "production services did not reach active state" in gate
+    assert "/opt/nmulticloud/deploy/bin/healthcheck-app netbox" in gate
+    assert "source /opt/nmulticloud/deploy/bin/nmc-deploy-lib" in gate
+    assert "compose_cmd netbox ps --status running --services" in gate
+    assert "grep -qx 'netbox-rq'" in gate
+    assert "/opt/nmulticloud/deploy/bin/status-app netbox || true" in gate
+    assert "[=,]netbox\\.service:active" not in gate
+    assert "[=,]netbox-rq\\.service:active" not in gate
 
 
 def test_console_stack_recovery_deploy_is_fixed_and_input_free() -> None:
