@@ -1,0 +1,6386 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+  
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://emersonfelipesp.github.io/netbox-proxbox/companion-plugins/audited-proxmox-writes/">
+      
+      
+        <link rel="prev" href="../">
+      
+      
+        <link rel="next" href="../netbox-rpc/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+  
+  
+    <meta name="robots" content="noindex">
+  
+
+    
+      
+        <title>Audited Proxmox Writes - Proxbox Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="https://cdn.materialdesignicons.com/5.4.55/css/materialdesignicons.min.css">
+    
+      <link rel="stylesheet" href="../../extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="deep-orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#audited-proxmox-writes-with-rpc-and-openbao" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="https://netboxlabs.com" title="Proxbox Docs" class="md-header__button md-logo" aria-label="Proxbox Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Proxbox Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Audited Proxmox Writes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="deep-orange"  aria-label="Switch to Dark Mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to Dark Mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7M9 21v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1m3-17a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V16h4v-2.42c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to Light Mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to Light Mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/emersonfelipesp/netbox-proxbox" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    emersonfelipesp/netbox-proxbox
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://netboxlabs.com" title="Proxbox Docs" class="md-nav__button md-logo" aria-label="Proxbox Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Proxbox Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/emersonfelipesp/netbox-proxbox" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    emersonfelipesp/netbox-proxbox
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../certification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Certification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../application-packet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Packet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Installation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/pre-installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pre-Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installing the Plugin
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Installing the Plugin
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/1-installing-plugin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using pip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/2-installing-plugin-git/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using git (recommended)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/3-installing-plugin-docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Docker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/backend-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Companion Plugins
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Companion Plugins
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audited Proxmox Writes
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audited Proxmox Writes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#status-and-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status and scope
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Status and scope">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#existing-behavior-versus-required-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Existing behavior versus required behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-and-trust-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture and trust boundaries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture and trust boundaries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#execution-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sensitive-material-inventory-and-migration-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensitive material inventory and migration targets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sensitive material inventory and migration targets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#credential-reference-contract-proposed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credential reference contract (proposed)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complete-operation-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete operation coverage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#procedure-variables-and-output-chaining" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Procedure variables and output chaining
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Procedure variables and output chaining">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#proposed-authoring-example-not-an-accepted-api-payload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed authoring example — not an accepted API payload
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation-and-operator-runbook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation and operator runbook
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation and operator runbook">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-prepare-a-compatible-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Prepare a compatible installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-configure-openbao-and-assignments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Configure OpenBao and assignments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-configure-rpc-backend-and-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Configure RPC backend and catalog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-run-integration-readiness-planned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Run integration readiness (planned)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-migrate-legacy-credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Migrate legacy credentials
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-validate-and-cut-over" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Validate and cut over
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#failure-handling-and-audit-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure handling and audit verification
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-sequence-and-acceptance-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation sequence and acceptance evidence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../netbox-rpc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    netbox-rpc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../netbox-openbao/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    netbox-openbao
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../netbox-pbs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    netbox-pbs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../netbox-pdm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    netbox-pdm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../netbox-ceph/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    netbox-ceph
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../netbox-packer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    netbox-packer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Backend
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../backend/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../backend/using-pip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using pip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../backend/using-git/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using git
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../backend/using-docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Docker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/required-parameters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Required Parameters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/plugin-settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/sync-overwrite-flags/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sync Overwrite Flags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/sync-modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sync Mode Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/reusing-existing-objects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reusing Existing Objects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/hardware-discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sync Command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/proxbox-cli/command-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_8_4" id="__nav_8_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Command Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/proxbox-cli/command-examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/proxbox-cli/command-examples/core-commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/proxbox-cli/command-examples/netbox-commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NetBox Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/proxbox-cli/command-examples/proxmox-commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxmox Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/proxbox-cli/command-examples/infrastructure-commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/architecture-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/component-deep-dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Component Deep Dive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/data-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/sync-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sync Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/data-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Flow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/streaming-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Streaming Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/endpoint-autoconfiguration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoint Auto-Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/backend-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/endpoint-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoint Data Exchange
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/browser-frontend/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Browser Frontend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/extending-the-plugin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extending the Plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_9_13" id="__nav_9_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_9_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/operational-verbs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operational Verbs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/netbox-to-proxmox-intent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NetBox to Proxmox Intent
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_9_14" id="__nav_9_14_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tooling
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_9_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tooling
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/release-publishing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Publishing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ci-e2e-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI and E2E Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/proxbox-cli-docgen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxbox CLI Docgen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/proxmox-mock-local/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Proxmox Mock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generated/proxbox-cli-command-capture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Raw CLI Capture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/cluster-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cluster and Node Tracking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/headless-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Headless Sync
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/single-exec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single-Exec Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scheduler/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scheduler Container
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/tenant-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tenant Mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/netbox-to-proxmox/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NetBox to Proxmox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/orphan-vm-purge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Orphan VM Review and Purge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/deletion-requests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deletion Requests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/recovering-proxbox-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Recovering Proxbox Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/semantic-mcp-bridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic MCP Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/endpoints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoints
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/firecracker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firecracker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/vm-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/ha/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cluster HA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/screenshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Screenshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/e2e-docker-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2E Docker Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/synchronized-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Synchronized Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/scheduled-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scheduled Sync
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/background-jobs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background Jobs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/virtual-machine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Virtual Machine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/browser-console/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Browser Console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/firecracker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firecracker Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/proxmox-config-tab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxmox Config Tab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/containers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Containers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/network/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/vlan-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VLAN Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/backup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/backup-routines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backup Routines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/replications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Replications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/ha/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HA Status
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/backend-logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/api-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/endpoint-import-export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoint Import / Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Model
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/virtual-machine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Virtual Machine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/vm-cloudinit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Cloud-Init
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/containers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Containers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/others/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Other Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_15" >
+        
+          
+          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_15">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Release Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.26.post1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.26.post1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.25/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.25
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.24/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.24
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.23.post2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.23.post2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.23.post1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.23.post1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.23/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.23
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.22/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.22
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.21
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.20.post3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.20.post3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.20.post2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.20.post2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.20.post1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.20.post1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.20
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.19/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.19
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.18.post1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.18.post1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.18/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.18
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.17/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.17
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.16/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.16
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.15.post2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.15.post2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.15.post1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.15.post1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.14/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.14
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.13/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.13
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.12/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.12
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.11/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.11
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.10/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.10
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.9.post4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.9.post4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.8
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.7/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.7
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/version-0.0.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version 0.0.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#status-and-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status and scope
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Status and scope">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#existing-behavior-versus-required-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Existing behavior versus required behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-and-trust-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture and trust boundaries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture and trust boundaries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#execution-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sensitive-material-inventory-and-migration-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensitive material inventory and migration targets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sensitive material inventory and migration targets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#credential-reference-contract-proposed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credential reference contract (proposed)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complete-operation-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete operation coverage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#procedure-variables-and-output-chaining" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Procedure variables and output chaining
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Procedure variables and output chaining">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#proposed-authoring-example-not-an-accepted-api-payload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed authoring example — not an accepted API payload
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation-and-operator-runbook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation and operator runbook
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation and operator runbook">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-prepare-a-compatible-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Prepare a compatible installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-configure-openbao-and-assignments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Configure OpenBao and assignments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-configure-rpc-backend-and-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Configure RPC backend and catalog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-run-integration-readiness-planned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Run integration readiness (planned)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-migrate-legacy-credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Migrate legacy credentials
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-validate-and-cut-over" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Validate and cut over
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#failure-handling-and-audit-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure handling and audit verification
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-sequence-and-acceptance-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation sequence and acceptance evidence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../.." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Proxbox
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Companion Plugins
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="audited-proxmox-writes-with-rpc-and-openbao">Audited Proxmox writes with RPC and OpenBao<a class="headerlink" href="#audited-proxmox-writes-with-rpc-and-openbao" title="Permanent link">&para;</a></h1>
+<h2 id="status-and-scope">Status and scope<a class="headerlink" href="#status-and-scope" title="Permanent link">&para;</a></h2>
+<p>This is the technical implementation plan and operator preparation runbook for
+integrating <strong>netbox-proxbox</strong>, <strong>netbox-rpc</strong>, and <strong>netbox-openbao</strong>. The target
+architecture below is <strong>planned</strong>, not a claim that installing these packages
+already routes every write through RPC. Do not enable production writes on the
+strength of this document alone. The implementation must publish tested package
+versions and pass the acceptance checks before cutover.</p>
+<p>The goal is one audited path for every operation exposed by Proxbox that changes
+a managed endpoint. NetBox retains inventory, policy, references and execution
+history. OpenBao retains sensitive material. RPC authorizes and records each
+operation; a trusted executor performs it. Read-only inventory deployments may
+continue without the optional operational plugins.</p>
+<h3 id="existing-behavior-versus-required-behavior">Existing behavior versus required behavior<a class="headerlink" href="#existing-behavior-versus-required-behavior" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Existing implementation</th>
+<th>Required integration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Endpoint secrets</td>
+<td><code>integrations/openbao.py</code> stores endpoint password, API token, SSH password and keypair through OpenBao</td>
+<td>Extend coverage to every store below and provide verified migration</td>
+</tr>
+<tr>
+<td>Node and service secrets</td>
+<td>Several models retain local ciphertext; <code>NetBoxEndpoint.token_secret</code> is a character field</td>
+<td>Persist references instead of material in mandatory OpenBao mode</td>
+</tr>
+<tr>
+<td>RPC integration</td>
+<td><code>integrations/rpc.py</code> queues SSH-key installation and service collection</td>
+<td>Route all enabled endpoint mutations through versioned RPC procedures</td>
+</tr>
+<tr>
+<td>Operational actions</td>
+<td><code>views/operational.py</code> and <code>views/ha_actions.py</code> call proxbox-api directly</td>
+<td>Create authorized RPC executions and enforce the same boundary in proxbox-api</td>
+</tr>
+<tr>
+<td>Command variables</td>
+<td>RPC already has command templating and command-output capture</td>
+<td>Preserve that authoring contract and implement tested standalone-executor parity</td>
+</tr>
+<tr>
+<td>Procedure chaining</td>
+<td>A sequence is not yet a durable output-dependent workflow</td>
+<td>Named steps wait for validated predecessor results and survive restarts</td>
+</tr>
+<tr>
+<td>OpenBao variables</td>
+<td>Endpoint storage integration exists</td>
+<td>Add a target-bound automation resolver for RPC variables</td>
+</tr>
+<tr>
+<td>Compatibility</td>
+<td>Existing installation pages describe individual components</td>
+<td>Publish a tested matrix for NetBox, all three plugins, proxbox-api, RPC backend and optional broker</td>
+</tr>
+</tbody>
+</table>
+<h2 id="architecture-and-trust-boundaries">Architecture and trust boundaries<a class="headerlink" href="#architecture-and-trust-boundaries" title="Permanent link">&para;</a></h2>
+<p>The following diagram describes the <strong>target</strong> architecture. The write gateway
+must enforce authorization at the backend transport boundary, not only hide UI
+buttons. Direct REST callers, jobs, signals and generated proxy routes must not
+be able to bypass it.</p>
+<pre class="mermaid"><code>flowchart TB
+    Operator["Operator or authorized automation"]
+    subgraph NetBox["NetBox: metadata and control"]
+        Proxbox["netbox-proxbox: inventory and operation requests"]
+        RPC["netbox-rpc: policies, approvals and execution ledger"]
+        Provider["netbox-openbao: assignments and access policy"]
+    end
+    Executor["Trusted RPC executor"]
+    Gateway["proxbox-api write gateway and typed handlers"]
+    Broker["Optional OpenBao broker"]
+    Vault[("OpenBao: secret material")]
+    Target["Proxmox endpoint or supported companion target"]
+    Operator --&gt; Proxbox
+    Proxbox --&gt;|"Versioned operation request"| RPC
+    RPC --&gt;|"Authorized execution and references"| Executor
+    Executor --&gt;|"Bound credential resolution"| Provider
+    Provider --&gt;|"Direct mode"| Vault
+    Provider --&gt;|"Broker mode"| Broker
+    Broker --&gt; Vault
+    Executor --&gt;|"Execution-bound request"| Gateway
+    Gateway --&gt;|"Typed API operation"| Target
+    Executor --&gt;|"Catalogued SSH operation when permitted"| Target
+    Target --&gt;|"Task result and verification"| Executor
+    Executor --&gt;|"Sanitized result and correlation"| RPC
+    Target -.-&gt;|"Read-only discovery through proxbox-api"| Proxbox</code></pre>
+<p>RPC is the policy and audit boundary; proxbox-api can retain existing typed
+Proxmox handlers behind an authenticated execution-bound gateway. The exact
+dispatch envelope and executor ownership must be agreed across repositories
+before implementation. An ordinary actor header or possession of the shared
+backend API key is insufficient proof of an authorized RPC execution.</p>
+<p>An execution binds the initiating operator, executor identity, endpoint and
+object identity, operation and procedure versions, validated parameters,
+credential purpose and approval snapshot. A service account performs delegated
+work; its broad permissions must not replace the initiating operator's rights.
+Check those rights again immediately before dispatch and credential resolution.
+Scheduled jobs and signals must name an explicitly scoped automation principal;
+they cannot inherit ambient service-account authority. Human approval remains
+required wherever the operation policy requires it.</p>
+<p>Broker mode keeps vault authentication material out of NetBox configuration. It
+does not contain a compromised NetBox process that can request legitimate
+reveals. Both direct and broker modes must enforce identical target and policy
+checks. Material is revealed only to the trusted consumer over authenticated
+TLS, for the shortest practical lifetime.</p>
+<h3 id="execution-sequence">Execution sequence<a class="headerlink" href="#execution-sequence" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>sequenceDiagram
+    participant U as Operator
+    participant P as Proxbox
+    participant R as RPC control plane
+    participant E as Trusted executor
+    participant O as OpenBao provider
+    participant V as Proxmox
+    U-&gt;&gt;P: Request a typed operation
+    P-&gt;&gt;R: Target, parameters and credential references
+    R-&gt;&gt;R: Validate permissions, capabilities and immutable plan
+    R--&gt;&gt;U: Request approval when required
+    U-&gt;&gt;R: Approve exact action or bounded envelope
+    R-&gt;&gt;E: Claim authorized execution once
+    E-&gt;&gt;R: Recheck actor, target, gates and approval
+    E-&gt;&gt;O: Resolve allowed field for target and execution
+    O-&gt;&gt;O: Check assignment, policy, revocation and version
+    O--&gt;&gt;E: Secret material through protected channel
+    E-&gt;&gt;V: Dispatch catalogued operation
+    V--&gt;&gt;E: Task UPID or synchronous result
+    E-&gt;&gt;V: Poll exact task to terminal state
+    V--&gt;&gt;E: Terminal outcome
+    E-&gt;&gt;E: Validate and sanitize declared outputs
+    E-&gt;&gt;R: Result, task identity and credential version metadata
+    R--&gt;&gt;P: Execution status and audit link
+    P--&gt;&gt;U: Verified outcome, inventory refresh after success</code></pre>
+<p>Acceptance of an asynchronous task is not success. Correlate the Proxbox
+request, intent run, step, RPC execution, credential access and Proxmox UPID.
+Persist refusal and uncertain outcomes as well as successful operations.</p>
+<h2 id="sensitive-material-inventory-and-migration-targets">Sensitive material inventory and migration targets<a class="headerlink" href="#sensitive-material-inventory-and-migration-targets" title="Permanent link">&para;</a></h2>
+<p>This matrix names current sources to migrate; it does not authorize copying
+plaintext into issues, exports, logs or migration reports. Inventory metadata
+such as usernames, public authorized keys, token IDs and host-key fingerprints
+is not itself a private key or password. Restrict metadata access appropriately.</p>
+<table>
+<thead>
+<tr>
+<th>Current source</th>
+<th>Sensitive material</th>
+<th>Target reference and migration concern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>models/proxmox_endpoint.py</code></td>
+<td><code>password_enc</code>, <code>token_value_enc</code>, <code>ssh_password_enc</code>, <code>ssh_private_key_enc</code></td>
+<td>Reuse the four existing OpenBao UUID references; verify each material type before cutover</td>
+</tr>
+<tr>
+<td><code>models/ssh_credential.py</code></td>
+<td>Node SSH <code>password_enc</code>, <code>private_key_enc</code></td>
+<td>Add node-bound password/keypair references; retain username, port and pinned fingerprint</td>
+</tr>
+<tr>
+<td><code>models/netbox_endpoint.py</code></td>
+<td>Outbound NetBox v2 <code>token_secret</code> and material reached through the core token relationship</td>
+<td>Move the outbound copy to OpenBao; do not replace NetBox core token ownership or authentication semantics</td>
+</tr>
+<tr>
+<td><code>models/fastapi_endpoint.py</code></td>
+<td>Backend <code>token_enc</code></td>
+<td>Preserve bootstrap, rotation and backend attestation while changing storage</td>
+</tr>
+<tr>
+<td><code>models/pbs_endpoint.py</code>, <code>models/pdm_endpoint.py</code></td>
+<td><code>token_secret_enc</code></td>
+<td>Add purpose-specific PBS/PDM assignments</td>
+</tr>
+<tr>
+<td><code>models/firecracker.py</code></td>
+<td>Host-agent <code>agent_token_enc</code></td>
+<td>Bind to the selected host agent and allowed provisioning operation</td>
+</tr>
+<tr>
+<td><code>models/proxmox_metrics.py</code></td>
+<td>InfluxDB <code>query_token_enc</code></td>
+<td>Bind to the metrics endpoint and read/query purpose</td>
+</tr>
+<tr>
+<td><code>integrations/openbao.py</code> keypair payload</td>
+<td>Private key and optional passphrase</td>
+<td>Return a typed keypair to the transport; the existing private-key resolver alone does not expose the complete keypair contract</td>
+</tr>
+<tr>
+<td>Intent and cloud-init inputs</td>
+<td>Guest passwords, private keys and secret-bearing user data</td>
+<td>Accept secret references; prevent plaintext persistence in plans, jobs and captured output</td>
+</tr>
+<tr>
+<td>proxbox-api configuration/database and caches</td>
+<td>Replicated endpoint authentication material</td>
+<td>Remove durable duplicate material in mandatory mode, while supporting authorized just-in-time read and write clients</td>
+</tr>
+</tbody>
+</table>
+<p>Guest credentials are assigned to the discovered <code>VirtualMachine</code> or other
+supported object through OpenBao. Inventory discovery must not extract guest
+passwords, rotate credentials on a sync failure, or persist guest secrets in
+custom fields. Public keys remain safe procedure inputs; private keys do not.</p>
+<p>Reconcile any existing external guest credential-store identifier during migration.
+OpenBao is the authoritative material store in mandatory mode. If an external
+credential store and OpenBao identify conflicting credentials, stop that binding for operator
+resolution rather than silently choosing either value. Compatibility adapters
+may carry references and non-secret metadata only; they must not maintain a
+second copy of the secret. Record the selected assignment and reconciliation
+outcome before enabling dependent guest procedures.</p>
+<h3 id="credential-reference-contract-proposed">Credential reference contract (proposed)<a class="headerlink" href="#credential-reference-contract-proposed" title="Permanent link">&para;</a></h3>
+<p>A versioned reference identifies a credential or assignment UUID, target content
+type and object ID, purpose, allowed payload field and version policy. It must
+not accept an arbitrary vault path, URL, AppRole, bearer or caller-selected
+identity. Reject missing, ambiguous, inactive, wrong-target and wrong-purpose
+assignments. Rotation uses a documented live-version policy by default and
+records the resolved version; identity-changing rotation invalidates any
+approval that depended on the old identity.
+Resolve related fields atomically from one selected vault version: an SSH
+private key and its passphrase must never come from different live versions.</p>
+<p>Only references enter execution parameters, queue messages, snapshots and
+fingerprints. Secret values may reach an approved transport credential channel,
+stdin, short-lived protected file or API authentication sink. They cannot select
+the target, executable, procedure, request URL, output selector or shell fragment.
+Mark sensitivity before rendering and capture. Never persist raw output first
+and depend on later redaction. Where SSH uses a remote shell, retain the
+transport's reviewed quoting and allowlist contract; do not claim it is shell-free.</p>
+<h2 id="complete-operation-coverage">Complete operation coverage<a class="headerlink" href="#complete-operation-coverage" title="Permanent link">&para;</a></h2>
+<p>Implementation must turn this family-level inventory into a checked row for
+every actual exposed operation. Each row needs the UI/API/job caller, backend
+route, procedure version, input and result schemas, target, credential purpose,
+permissions, approval/effect classification, timeout, idempotency and
+reconciliation strategy, completion read and tests. Compare the matrix against
+mounted routes and callers in CI; an unclassified mutation blocks enablement.</p>
+<table>
+<thead>
+<tr>
+<th>Family</th>
+<th>Current source surface</th>
+<th>Required RPC mapping</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>QEMU/LXC operations</td>
+<td><code>routes/proxmox_actions.py</code>; Proxbox <code>views/operational.py</code></td>
+<td>Start, stop, reboot, delete, migrate and migration cancellation</td>
+</tr>
+<tr>
+<td>Snapshots and backups</td>
+<td><code>routes/proxmox_actions.py</code></td>
+<td>Snapshot create/delete and backup create; separately enumerate any exposed restore/delete operations</td>
+</tr>
+<tr>
+<td>Branch intent</td>
+<td><code>routes/intent/apply.py</code>, <code>dispatchers/</code></td>
+<td>QEMU/LXC create, update and destroy with immutable plan and deletion authorization</td>
+</tr>
+<tr>
+<td>Tags</td>
+<td><code>routes/proxmox_tags.py</code>, <code>routes/intent/vm_tags.py</code></td>
+<td>Replace/patch tags and pending-deletion tag changes</td>
+</tr>
+<tr>
+<td>Firewall</td>
+<td><code>routes/proxmox/firewall.py</code></td>
+<td>Datacenter/node/guest/vnet rules, groups and group rules, IP sets and entries, aliases and options</td>
+</tr>
+<tr>
+<td>HA</td>
+<td><code>routes/proxmox/ha.py</code>; Proxbox <code>views/ha_actions.py</code></td>
+<td>Arm/disarm and any additional exposed HA mutation</td>
+</tr>
+<tr>
+<td>Datacenter</td>
+<td><code>routes/proxmox/datacenter.py</code></td>
+<td>Custom CPU model create/update/delete</td>
+</tr>
+<tr>
+<td>Cloud guests</td>
+<td><code>routes/cloud/provision.py</code>, <code>lxc.py</code>, <code>pve_template.py</code></td>
+<td>VM/LXC provisioning and template-based creation with exact task results</td>
+</tr>
+<tr>
+<td>Images and templates</td>
+<td><code>routes/cloud/template_images.py</code>, <code>image_factory.py</code>, <code>azure_vhd_imports.py</code></td>
+<td>Download/import, configuration, conversion, cancellation and explicitly approved cleanup; preserve Packer authorization</td>
+</tr>
+<tr>
+<td>Firecracker</td>
+<td><code>routes/cloud/firecracker.py</code></td>
+<td>Audited host-agent provisioning and any exposed mutation; identify non-PVE transport explicitly</td>
+</tr>
+<tr>
+<td>Host operations</td>
+<td>Proxbox <code>integrations/rpc.py</code></td>
+<td>Preserve SSH-key installation and service collection; register missing supported host procedures</td>
+</tr>
+<tr>
+<td>Disks, storage, replication, SDN, Ceph, PBS/PDM, metrics and access</td>
+<td>Current plugin callers, companion integrations and backend routes</td>
+<td>Enumerate actual writes individually; mark inventory-only resources explicitly rather than inventing CRUD support</td>
+</tr>
+<tr>
+<td>Generated/raw proxies</td>
+<td>Mounted generated routes and dynamic dispatch</td>
+<td>Reject uncatalogued writes; no unrestricted generic command or API-path procedure</td>
+</tr>
+<tr>
+<td>Browser consoles and SSH terminals</td>
+<td>Console/session and terminal handlers</td>
+<td>Classify session creation and interactive effects; unrestricted writable terminals are incompatible with RPC-only mode unless governed by an approved RPC session policy</td>
+</tr>
+<tr>
+<td>Endpoint/configuration administration</td>
+<td>Backend endpoint and access configuration routes</td>
+<td>Distinguish local metadata changes from managed-endpoint effects; audit and authorize security-relevant gate changes</td>
+</tr>
+</tbody>
+</table>
+<p>All backend paths above are relative to <code>proxbox_api/</code>. Read-only status,
+discovery, service collection and task polling remain available according to
+their existing permissions; POST does not necessarily mean a Proxmox write.
+NetBox inventory reconciliation can itself delete stale inventory and still
+needs its existing permission classification.</p>
+<pre class="mermaid"><code>flowchart TD
+    Request["Incoming operation"] --&gt; Classify{"Known effect classification?"}
+    Classify --&gt;|"No"| Deny["Reject and record reason"]
+    Classify --&gt;|"Read or inventory only"| Read["Existing scoped read or inventory permissions"]
+    Classify --&gt;|"Managed endpoint mutation"| Capability{"Compatible RPC and OpenBao capabilities?"}
+    Capability --&gt;|"No"| Deny
+    Capability --&gt;|"Yes"| Policy{"Target, actor, endpoint gates and approval valid?"}
+    Policy --&gt;|"No"| Deny
+    Policy --&gt;|"Yes"| Dispatch["Versioned procedure with authorized secret references"]</code></pre>
+<h2 id="procedure-variables-and-output-chaining">Procedure variables and output chaining<a class="headerlink" href="#procedure-variables-and-output-chaining" title="Permanent link">&para;</a></h2>
+<p>Reuse existing RPC command authoring (<code>render_mode</code>, <code>produces_var</code>,
+<code>capture_kind</code>, <code>capture_expression</code>, and <code>params/target/vars/runtime/item</code>
+roots). The new work is a versioned binding contract and durable cross-procedure
+orchestration, including parity in the standalone execution backend.</p>
+<p>Each intent run has stable named step instances, allowing the same procedure
+more than once. Sources are validated parameters, allowlisted target fields,
+earlier command captures, earlier successful step outputs selected by bounded
+JSON pointer, or an authorized OpenBao reference. Reject forward references,
+cycles, unknown selectors, incompatible types and unbounded output. Persist
+non-secret schema-valid results and provenance; secret outputs must become
+OpenBao references before durable events or downstream use.</p>
+<h3 id="proposed-authoring-example-not-an-accepted-api-payload">Proposed authoring example — not an accepted API payload<a class="headerlink" href="#proposed-authoring-example-not-an-accepted-api-payload" title="Permanent link">&para;</a></h3>
+<p>The following YAML illustrates the contract to implement. The procedure names,
+<code>source</code> union and workflow schema are proposed; do not submit this to current
+REST endpoints. Documentation must replace it with a tested importable example
+once exact versions implement the contract.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">schema_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="nt">steps</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allocate</span>
+<span class="w">    </span><span class="nt">procedure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">proxmox.guest.reserve_id</span>
+<span class="w">    </span><span class="nt">outputs</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">vmid</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">integer</span><span class="p p-Indicator">,</span><span class="nt"> minimum</span><span class="p">:</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="nt"> sensitive</span><span class="p">:</span><span class="w"> </span><span class="nv">false</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">create</span>
+<span class="w">    </span><span class="nt">procedure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">proxmox.qemu.create</span>
+<span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">allocate</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">bindings</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">vmid</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="nv">step_output</span><span class="p p-Indicator">,</span><span class="nt"> step</span><span class="p">:</span><span class="w"> </span><span class="nv">allocate</span><span class="p p-Indicator">,</span><span class="nt"> pointer</span><span class="p">:</span><span class="w"> </span><span class="nv">/vmid</span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">api_token</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openbao</span>
+<span class="w">        </span><span class="nt">assignment_uuid</span><span class="p">:</span><span class="w"> </span><span class="s">"00000000-0000-0000-0000-000000000001"</span>
+<span class="w">        </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">content_type</span><span class="p">:</span><span class="w"> </span><span class="nv">netbox_proxbox.proxmoxendpoint</span><span class="p p-Indicator">,</span><span class="nt"> object_id</span><span class="p">:</span><span class="w"> </span><span class="nv">123</span><span class="p p-Indicator">}</span>
+<span class="w">        </span><span class="nt">purpose</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">proxmox-api</span>
+<span class="w">        </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">token</span>
+<span class="w">        </span><span class="nt">version_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">live</span>
+<span class="w">    </span><span class="nt">outputs</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">upid</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">string</span><span class="p p-Indicator">,</span><span class="nt"> max_length</span><span class="p">:</span><span class="w"> </span><span class="nv">512</span><span class="p p-Indicator">,</span><span class="nt"> sensitive</span><span class="p">:</span><span class="w"> </span><span class="nv">false</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wait</span>
+<span class="w">    </span><span class="nt">procedure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">proxmox.task.wait</span>
+<span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">create</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">bindings</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">upid</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="nv">step_output</span><span class="p p-Indicator">,</span><span class="nt"> step</span><span class="p">:</span><span class="w"> </span><span class="nv">create</span><span class="p p-Indicator">,</span><span class="nt"> pointer</span><span class="p">:</span><span class="w"> </span><span class="nv">/upid</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verify</span>
+<span class="w">    </span><span class="nt">procedure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">proxmox.guest.verify</span>
+<span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">wait</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">bindings</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">vmid</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="nv">step_output</span><span class="p p-Indicator">,</span><span class="nt"> step</span><span class="p">:</span><span class="w"> </span><span class="nv">allocate</span><span class="p p-Indicator">,</span><span class="nt"> pointer</span><span class="p">:</span><span class="w"> </span><span class="nv">/vmid</span><span class="p p-Indicator">}</span>
+</code></pre></div>
+<p>The UUID and endpoint ID are placeholders, not reusable credentials. The token
+binding is secret and permitted only in the handler's API-authentication sink;
+it is never a normal command argument. A complete runnable example should then
+install a public SSH key using the verified guest and its assigned credential.
+Proxmox <code>nextid</code> is a lookup, not a reservation: allocation requires locking and
+bounded collision handling, with no implicit replay of a guest creation.</p>
+<pre class="mermaid"><code>flowchart LR
+    Allocate["Allocate under target lock"] --&gt;|"Validated integer VMID"| Create["Create guest"]
+    Credential["OpenBao assignment reference"] --&gt;|"Just-in-time API authentication"| Create
+    Create --&gt;|"Validated task UPID"| Wait["Wait for terminal success"]
+    Wait --&gt; Verify["Verify guest identity and state"]
+    Allocate --&gt;|"Same VMID"| Verify
+    Verify --&gt; Key["Install public key using guest credential"]</code></pre>
+<p>Dependent steps run only after successful, schema-valid predecessors. Claim
+steps atomically and enqueue after the database transaction commits. Duplicate
+callbacks and worker restarts must not dispatch a mutation twice. Failure stops
+descendants by default. Approval of a plan must not authorize unknown future
+values: approve resolved child parameters or a formally bounded envelope.</p>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; Pending
+    Pending --&gt; Ready: Dependencies succeeded
+    Ready --&gt; AwaitingApproval: Approval required
+    AwaitingApproval --&gt; Running: Approved and revalidated
+    Ready --&gt; Running: Policy permits dispatch
+    Running --&gt; Succeeded: Verified terminal result
+    Running --&gt; Failed: Known failure
+    Running --&gt; OutcomeUnknown: Dispatch outcome cannot be proven
+    OutcomeUnknown --&gt; Succeeded: Task evidence proves success
+    OutcomeUnknown --&gt; Failed: Task evidence proves failure
+    Ready --&gt; Denied: Permission or credential denied
+    AwaitingApproval --&gt; Expired: Approval expires
+    Pending --&gt; Cancelled: Run cancelled
+    Succeeded --&gt; [*]
+    Failed --&gt; [*]
+    Denied --&gt; [*]
+    Expired --&gt; [*]
+    Cancelled --&gt; [*]</code></pre>
+<p>Outcome-unknown is an operator-visible reconciliation state, never an automatic
+retry instruction. Cancellation requests need their own permission and audit;
+they do not imply rollback. No automatic destructive compensation is permitted.</p>
+<h2 id="installation-and-operator-runbook">Installation and operator runbook<a class="headerlink" href="#installation-and-operator-runbook" title="Permanent link">&para;</a></h2>
+<h3 id="1-prepare-a-compatible-installation">1. Prepare a compatible installation<a class="headerlink" href="#1-prepare-a-compatible-installation" title="Permanent link">&para;</a></h3>
+<p>Record the NetBox, plugin, proxbox-api, RPC backend, OpenBao and broker versions.
+The existing Proxbox compatibility range does not prove composed RPC/OpenBao
+support. The implementation must publish an exact tested minimum-version matrix
+and capability response. Until then, strict integration readiness is <strong>blocked</strong>.</p>
+<p>For a host/venv deployment, use the existing
+<a href="../../installation/1-installing-plugin/">plugin installation</a> and
+<a href="../../installation/backend-setup/">backend setup</a> paths. Add <code>netbox-proxbox</code>,
+<code>netbox-rpc</code> and <code>netbox-openbao</code> at the release's tested versions to the
+deployment's requirements. Enable them in the NetBox configuration:</p>
+<div class="highlight"><pre><span></span><code><span class="n">PLUGINS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"netbox_proxbox"</span><span class="p">,</span>
+    <span class="s2">"netbox_openbao"</span><span class="p">,</span>
+    <span class="s2">"netbox_rpc"</span><span class="p">,</span>
+<span class="p">]</span>
+</code></pre></div>
+<p>Retain any other installed plugins. Use the NetBox deployment's normal upgrade
+procedure to install dependencies, migrate the database, collect static files
+and restart both web and worker processes. These are existing NetBox operations,
+not a new integration setup command. Ensure the worker uses the same packages
+and configuration as the web process.</p>
+<p>For Docker/Compose, follow
+<a href="../../installation/3-installing-plugin-docker/">the Docker installation guide</a>:
+put pinned plugin requirements in <code>plugin_requirements.txt</code>, configure
+<code>configuration/plugins.py</code>, and build the same custom image for web and workers.
+Run migrations and static collection through the documented deployment upgrade
+path. Do not install packages only into a running web container.</p>
+<table>
+<thead>
+<tr>
+<th>Connection</th>
+<th>Host/standalone container</th>
+<th>Same Compose project</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NetBox to proxbox-api</td>
+<td>Reachable backend address and published port, commonly <code>8800</code></td>
+<td>Backend service name and container port <code>8000</code></td>
+</tr>
+<tr>
+<td>proxbox-api to NetBox</td>
+<td>Reachable NetBox service address</td>
+<td>NetBox service name and container port <code>8080</code></td>
+</tr>
+<tr>
+<td>Executor/provider to OpenBao or broker</td>
+<td>Authenticated reachable TLS address</td>
+<td>Service DNS and configured internal TLS port</td>
+</tr>
+</tbody>
+</table>
+<p>Never use browser-visible <code>localhost</code> or a host-only <code>127.0.0.1</code> published port
+as a peer-container address. Persist the backend <code>/data</code> volume. During legacy
+migration retain the existing encryption key using the documented configuration;
+if using its key file, <code>PROXBOX_ENCRYPTION_KEY_FILE=/data/encryption.key</code> puts it
+on that volume. Do not destroy an old key while encrypted records still depend
+on it. Consult the backend setup guide for key generation and attestation.</p>
+<h3 id="2-configure-openbao-and-assignments">2. Configure OpenBao and assignments<a class="headerlink" href="#2-configure-openbao-and-assignments" title="Permanent link">&para;</a></h3>
+<p>Use the existing OpenBao plugin UI and its
+<a href="https://github.com/emersonfelipesp/netbox-openbao/blob/main/docs/installation.md">installation guide</a>
+to configure the instance, KV v2 engine and credential policies. Choose direct or
+broker mode deliberately. Configure vault authentication through the supported
+settings/secret-loading path, not shell arguments, tracked files or procedure
+parameters. Grant only the required engine and credential paths; do not grant a
+broad administrator role or create one AppRole per procedure.</p>
+<p>Create or select credentials and assign them to the exact endpoint, node or
+guest. Set the purpose and permitted field, and ensure password/keypair selection
+is unambiguous. Record host-key fingerprints using the existing trusted
+verification process. Public-key discovery alone is not approval to trust a key.
+Test an allowed access and a denied wrong-target access without logging material.</p>
+<p>Bootstrap cannot depend on an RPC execution whose own credentials are not yet
+available. An authorized operator must initially provision OpenBao authentication,
+the RPC dispatch/executor identities and their minimum policies through the
+components' supported installation paths, outside the self-hosted RPC workflow.
+Record that bootstrap activity and protect its recovery material. After the
+provider and executor can authenticate independently, use audited management
+for subsequent supported changes; do not retain a broad bootstrap identity as
+the routine execution identity.</p>
+<h3 id="3-configure-rpc-backend-and-catalog">3. Configure RPC backend and catalog<a class="headerlink" href="#3-configure-rpc-backend-and-catalog" title="Permanent link">&para;</a></h3>
+<p>Configure the existing RPC backend record, dispatch authentication and worker
+using the selected RPC release's installation documentation. Confirm backend
+health and execution-history access before introducing writes. Catalog seeds,
+handler versions and declared capabilities must agree. The standalone backend
+must implement command render/capture and the OpenBao provider contract; success
+against a legacy backend alone does not prove compatibility.</p>
+<p>Install or reconcile only the reviewed Proxmox procedure set. Reconciliation
+must be idempotent, preserve operator-owned overrides, report drift and avoid
+silently changing approvals. Bind initiating-user and executor permissions
+separately. API-only endpoints must never fall back to SSH. Keep endpoint
+<code>enabled</code>, <code>allow_writes</code>, transport restrictions and the separate Packer gate.</p>
+<h3 id="4-run-integration-readiness-planned">4. Run integration readiness (planned)<a class="headerlink" href="#4-run-integration-readiness-planned" title="Permanent link">&para;</a></h3>
+<p>The proposed management commands below are <strong>not implemented commands</strong> and must
+not be run against an installation as though this plan supplied them:</p>
+<div class="highlight"><pre><span></span><code>manage.py proxbox_openbao_setup --check
+manage.py proxbox_openbao_setup --backfill-assignments
+</code></pre></div>
+<p>Implement these commands and a shared UI/API readiness panel before enabling the
+feature; this plan does not establish an available strict-mode setting. The
+<code>--check</code> command must perform read-only validation, report all failures in one
+run and exit nonzero when any readiness requirement fails. The panel must use
+the same validation service and show the same failures. It must list
+all missing capabilities, catalog mappings, schema versions, endpoint bindings,
+credential permissions, worker health and migration checkpoints. A second setup
+run must produce no duplicate catalog rows or assignments. The proposed
+<code>--backfill-assignments</code> action must support idempotent reference/assignment
+reconciliation, preserve operator-owned choices and report unresolved conflicts;
+it must not copy or reveal secret material or grant broad permissions. Preview must not
+reveal secrets or contact Proxmox for mutations.</p>
+<p>Operators using a management CLI should use its supported virtualization,
+RPC procedure and execution-history surfaces, consulting its installed <code>--help</code>
+for exact verbs. Do not substitute raw host SSH or direct Proxmox API calls for a missing
+command. Exact acceptance commands must be published with the implementing
+release; the proposed workflow above is not a current executable command.</p>
+<h3 id="5-migrate-legacy-credentials">5. Migrate legacy credentials<a class="headerlink" href="#5-migrate-legacy-credentials" title="Permanent link">&para;</a></h3>
+<p>Back up database and vault metadata according to the deployment's recovery
+policy. Produce a secret-free inventory of all sources in the matrix. Use an
+additive, resumable migration: copy into a staged version, verify material
+through its intended client without displaying it, then compare-and-set the
+NetBox reference and activate the approved version. Resolve concurrent rotation
+explicitly. Failed database transactions must not delete pre-existing or
+concurrently written vault versions. A retry must reuse its migration identity.
+If the legacy encryption key is unavailable, stop that record's migration and
+report recovery required. Do not replace unreadable ciphertext with an empty
+credential or claim it was migrated; use documented recovery or operator-led
+credential replacement first.</p>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; Inventoried
+    Inventoried --&gt; Staged: Copy to tracked vault version
+    Staged --&gt; Verified: Validate intended access
+    Staged --&gt; Attention: Copy or validation failed
+    Verified --&gt; Bound: Compare-and-set reference
+    Verified --&gt; Attention: Concurrent change detected
+    Bound --&gt; Cutover: All consumers use references
+    Cutover --&gt; Retired: Operator approves legacy retirement
+    Attention --&gt; Inventoried: Reconcile and resume
+    Retired --&gt; [*]</code></pre>
+<p>Existing endpoint OpenBao settings are not proof that backend replicas, node
+credentials or metrics tokens have migrated. Verify all consumers before
+retiring a local value. Rotation and retirement are separate operations. Keep
+the migration ledger and credential version references without material.</p>
+<h3 id="6-validate-and-cut-over">6. Validate and cut over<a class="headerlink" href="#6-validate-and-cut-over" title="Permanent link">&para;</a></h3>
+<p>In an isolated lab, run the published composed acceptance suite with real
+NetBox and OpenBao and an approved Proxmox simulator or lab endpoint. Start with
+preview and reads, then one approved reversible write through each mapped family.
+Test denied actor, wrong assignment, disabled RPC, incompatible backend, vault
+outage and stale approval before enabling broader writes. These must produce no
+managed-endpoint mutation. Destructive test operations require separate human
+authorization and an isolated disposable target.</p>
+<p>Only enable mandatory mode after the checked operation and secret matrices have
+no unresolved rows. A partial rollout leaves unsupported writes unavailable.
+Roll back by disabling protected writes and retaining audit records and vault
+material; never silently restore direct calls or local-secret fallback.</p>
+<h2 id="failure-handling-and-audit-verification">Failure handling and audit verification<a class="headerlink" href="#failure-handling-and-audit-verification" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Required behavior</th>
+<th>Operator evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Missing RPC/provider capability</td>
+<td>Refuse before dispatch</td>
+<td>Readiness reason and no target task</td>
+</tr>
+<tr>
+<td>Denied/revoked actor or assignment</td>
+<td>Revalidate and deny</td>
+<td>Correlated refusal without material</td>
+</tr>
+<tr>
+<td>Vault/broker outage or expired lease</td>
+<td>Fail closed; no local fallback</td>
+<td>Provider failure classification and execution state</td>
+</tr>
+<tr>
+<td>Rotation after approval</td>
+<td>Apply declared version policy and invalidate identity-dependent approval</td>
+<td>Approved reference and resolved version metadata</td>
+</tr>
+<tr>
+<td>Invalid or secret-bearing output</td>
+<td>Reject output before persistence and stop descendants</td>
+<td>Schema failure and sanitized event</td>
+</tr>
+<tr>
+<td>Duplicate callback or worker restart</td>
+<td>Recover claimed step without repeating a mutation</td>
+<td>Stable execution/step identity and task evidence</td>
+</tr>
+<tr>
+<td>Dispatch timeout</td>
+<td>Mark outcome unknown and reconcile exact target/task</td>
+<td>UPID when known and explicit reconciliation record</td>
+</tr>
+<tr>
+<td>Partial provisioning</td>
+<td>Stop dependent steps; require an explicit recovery plan</td>
+<td>Per-step outcomes and retained resource identity</td>
+</tr>
+<tr>
+<td>Stale destructive approval</td>
+<td>Refuse until separately approved</td>
+<td>Snapshot mismatch and approval history</td>
+</tr>
+</tbody>
+</table>
+<p>Deletion retains all existing protections, including endpoint permission,
+independent confirmation and two-person authorization. An agent must not supply
+the human confirmation phrase, self-approve a deletion or enable destructive
+gates on the operator's behalf. A general request to run a workflow does not
+authorize destroying a VM, disk, snapshot, template or backup.</p>
+<p>Audit viewers should navigate from Proxbox request to intent run and step, RPC
+execution/events, credential access/version and terminal Proxmox task. Restrict
+access to each record by object permissions. Never include bearer values, PEM
+contents, passphrases, raw secret stdout or sensitive backend exception text.</p>
+<h2 id="implementation-sequence-and-acceptance-evidence">Implementation sequence and acceptance evidence<a class="headerlink" href="#implementation-sequence-and-acceptance-evidence" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Agree versioned reference, dispatch, output and capability contracts across
+   the three plugins and both backends.</li>
+<li>Implement OpenBao automation resolution and standalone RPC renderer/provider
+   parity, with target-bound permissions and secret lifetime tests.</li>
+<li>Implement additive credential migration and durable named-step orchestration.</li>
+<li>Seed missing procedures in bounded families with handlers and exact schemas.</li>
+<li>Replace Proxbox callers and enforce the backend boundary on every write path.</li>
+<li>Publish tested versions, setup/readiness tooling and an executable example.</li>
+<li>Validate an empty installation and an upgraded installation, then stage cutover.</li>
+</ol>
+<p>Acceptance must demonstrate every operation-matrix row with positive, denial,
+failure and asynchronous-completion tests. Secret canaries must be absent from
+database material columns in mandatory mode, queue payloads, parameters,
+snapshots, events, logs, error bodies and exported results. Test partial output
+and exceptions as well as success. Real OpenBao tests must cover CAS conflicts,
+staged/live versions, revocation, direct/broker modes and outage recovery.
+Include rotation between multi-field reads and scheduled/signal dispatch with
+missing or revoked automation principals in negative acceptance cases.</p>
+<p>State-machine tests must prove dependency waiting, repeated procedure instances,
+type rejection, stale approval denial, duplicate-event handling, restart recovery
+and outcome-unknown reconciliation. Composed tests must prove that direct
+backend and generated-route attempts cannot bypass RPC. Documentation build,
+diagram rendering and successful runbook execution are separate evidence:
+rendered diagrams do not prove runtime enforcement.</p>
+<p>Maintain requirements-to-test traceability, architecture decisions, migration
+checkpoints and release compatibility evidence. Executable changes require the
+repository's static analysis, tests and per-function complexity review; this
+planning document does not certify those gates. The roadmap remains incomplete
+until runtime acceptance passes, even when the documentation is published.</p>
+<h2 id="related-documentation">Related documentation<a class="headerlink" href="#related-documentation" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../netbox-rpc/">RPC companion integration</a></li>
+<li><a href="../netbox-openbao/">OpenBao endpoint and guest credentials</a></li>
+<li><a href="../">Companion plugin overview</a></li>
+<li><a href="../../installation/backend-setup/">Backend installation and credential recovery</a></li>
+<li><a href="../../installation/3-installing-plugin-docker/">Docker installation</a></li>
+<li><a href="https://github.com/N-MultiCloud/netbox-rpc/blob/main/docs/cross-plugin-integrations.md">RPC cross-plugin integration</a></li>
+<li><a href="https://github.com/emersonfelipesp/netbox-openbao/blob/main/docs/architecture/openbao-broker-rpc.md">OpenBao broker and RPC architecture</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Overview">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Overview
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../netbox-rpc/" class="md-footer__link md-footer__link--next" aria-label="Next: netbox-rpc">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                netbox-rpc
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "search.suggest", "search.highlight", "navigation.footer", "navigation.path", "navigation.top", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/@material-icons/iconfont/material-icons.min.js"></script>
+      
+    
+  </body>
+</html>
