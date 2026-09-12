@@ -635,6 +635,13 @@ def test_production_health_gate_actually_asserts_service_state() -> None:
     assert "run: /opt/nmulticloud/deploy/bin/status-app netbox\n" not in gate
     assert "[=,]netbox\\.service:active" in gate
     assert "[=,]netbox-rq\\.service:active" in gate
+    assert "HEALTH_ATTEMPTS=30" in gate
+    assert "HEALTH_SLEEP_SECONDS=5" in gate
+    assert 'sleep "$HEALTH_SLEEP_SECONDS"' in gate
+    assert "while :" in gate
+    assert "printf 'status-app attempt %s/%s\\n'" in gate
+    assert "attempt=$(( attempt + 1 ))" in gate
+    assert "production services did not reach active state" in gate
 
 
 def test_console_stack_recovery_deploy_is_fixed_and_input_free() -> None:

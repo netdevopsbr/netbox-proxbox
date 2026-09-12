@@ -276,13 +276,27 @@ jobs:
           # calling it bare asserts nothing. Proxbox sync runs on netbox-rq --
           # a deploy that leaves the worker stopped breaks the very feature
           # being shipped while the web endpoint looks fine.
-          report="$(/opt/nmulticloud/deploy/bin/status-app netbox)"
-          printf '%s\n' "$report"
-          # The report reads `systemd=netbox.service:active,netbox-rq.service:...`,
-          # so the first entry is preceded by `=` rather than a comma. Anchoring
-          # on `(^|,)` alone silently fails every deploy.
-          printf '%s' "$report" | grep -Eq '[=,]netbox\.service:active(,|$)'
-          printf '%s' "$report" | grep -Eq '[=,]netbox-rq\.service:active(,|$)'
+          HEALTH_ATTEMPTS=30
+          HEALTH_SLEEP_SECONDS=5
+          attempt=1
+          while :; do
+            report="$(/opt/nmulticloud/deploy/bin/status-app netbox)"
+            printf 'status-app attempt %s/%s\n' "$attempt" "$HEALTH_ATTEMPTS"
+            printf '%s\n' "$report"
+            # The report reads `systemd=netbox.service:active,netbox-rq.service:...`,
+            # so the first entry is preceded by `=` rather than a comma. Anchoring
+            # on `(^|,)` alone silently fails every deploy.
+            if printf '%s' "$report" | grep -Eq '[=,]netbox\.service:active(,|$)' \
+              && printf '%s' "$report" | grep -Eq '[=,]netbox-rq\.service:active(,|$)'; then
+              break
+            fi
+            if (( attempt >= HEALTH_ATTEMPTS )); then
+              echo "production services did not reach active state after ${HEALTH_ATTEMPTS} attempts" >&2
+              exit 1
+            fi
+            attempt=$(( attempt + 1 ))
+            sleep "$HEALTH_SLEEP_SECONDS"
+          done
 
       - name: Publish host-issued successful-deployment attestation
         if: ${{ env.RESOLVED_SOURCE == 'latest_package' }}
