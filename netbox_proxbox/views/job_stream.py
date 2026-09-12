@@ -8,7 +8,7 @@ import queue
 import re
 import threading
 import time
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 
 from core.choices import JobStatusChoices
 from django.http import Http404, HttpRequest, StreamingHttpResponse
@@ -23,22 +23,36 @@ SYNC_OWNER_RQ = "rq_job"
 
 SYNC_WAIT_TIMEOUT = 60
 SYNC_WAIT_POLL_INTERVAL = 0.5
+JOB_CLASSIFICATION_GRACE_TIMEOUT = 1.0
+JOB_CLASSIFICATION_GRACE_POLL_INTERVAL = 0.1
 JOB_STREAM_HEARTBEAT_INTERVAL = 15.0
 JOB_STREAM_PRODUCER_JOIN_TIMEOUT = 1.0
 JOB_STREAM_HEARTBEAT = ": keep-alive\n\n"
+
+
+def _job_data_mapping(job: JobModel) -> dict[str, object]:
+    """Return job data as a mutable mapping, or an empty mapping if unusable."""
+    data: object = getattr(job, "data", None)
+    if isinstance(data, str):
+        try:
+            data = json.loads(data) if data else {}
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _proxbox_sync_mapping(data: dict[str, object]) -> dict[str, object]:
+    """Return the nested Proxbox sync object when it has the expected shape."""
+    proxbox_sync = data.get("proxbox_sync")
+    return proxbox_sync if isinstance(proxbox_sync, dict) else {}
 
 
 def _claim_sync_ownership(job: JobModel, owner: str) -> bool:
     """Atomically claim sync ownership on a job. Returns True if claimed, False if already taken."""
     import datetime as dt
 
-    data = getattr(job, "data", None) or {}
-    if isinstance(data, str):
-        try:
-            data = json.loads(data) if data else {}
-        except (json.JSONDecodeError, TypeError):
-            data = {}
-    proxbox_sync = data.get("proxbox_sync", {})
+    data = _job_data_mapping(job)
+    proxbox_sync = _proxbox_sync_mapping(data)
     current_owner = proxbox_sync.get("sync_owner")
     if current_owner and current_owner != owner:
         return False
@@ -52,13 +66,8 @@ def _claim_sync_ownership(job: JobModel, owner: str) -> bool:
 
 def _get_sync_ownership(job: JobModel) -> str | None:
     """Return the current sync owner for a job, or None if not claimed."""
-    data = getattr(job, "data", None)
-    if isinstance(data, str):
-        try:
-            data = json.loads(data) if data else {}
-        except (json.JSONDecodeError, TypeError):
-            data = {}
-    return data.get("proxbox_sync", {}).get("sync_owner")
+    owner = _proxbox_sync_mapping(_job_data_mapping(job)).get("sync_owner")
+    return owner if isinstance(owner, str) else None
 
 
 def _is_proxbox_apply_job(job: JobModel) -> bool:
@@ -68,13 +77,8 @@ def _is_proxbox_apply_job(job: JobModel) -> bool:
 
 def _release_sync_ownership(job: JobModel, owner: str) -> None:
     """Release sync ownership if we are the owner."""
-    data = getattr(job, "data", None)
-    if isinstance(data, str):
-        try:
-            data = json.loads(data) if data else {}
-        except (json.JSONDecodeError, TypeError):
-            data = {}
-    proxbox_sync = data.get("proxbox_sync", {})
+    data = _job_data_mapping(job)
+    proxbox_sync = _proxbox_sync_mapping(data)
     if proxbox_sync.get("sync_owner") == owner:
         del proxbox_sync["sync_owner"]
         if proxbox_sync.get("sync_owner_claimed_at"):
@@ -167,6 +171,8 @@ def _wait_for_job_status(
     job.refresh_from_db()
     current = getattr(job, "status", None)
     while current != target_status:
+        if current in JobStatusChoices.TERMINAL_STATE_CHOICES:
+            return current
         elapsed = time.monotonic() - start
         if elapsed >= timeout:
             logger.warning(
@@ -185,6 +191,94 @@ def _wait_for_job_status(
         job.refresh_from_db()
         current = getattr(job, "status", None)
     return current
+
+
+def _wait_for_observable_job(
+    job: JobModel,
+    is_sync_job: Callable[[JobModel], bool],
+    timeout: float = JOB_CLASSIFICATION_GRACE_TIMEOUT,
+    poll_interval: float = JOB_CLASSIFICATION_GRACE_POLL_INTERVAL,
+    stop_event: threading.Event | None = None,
+) -> tuple[bool, bool]:
+    """Wait briefly for asynchronously persisted Proxbox job metadata."""
+    start = time.monotonic()
+    while True:
+        job.refresh_from_db()
+        is_apply_job = _is_proxbox_apply_job(job)
+        if is_sync_job(job) or is_apply_job:
+            return True, is_apply_job
+        status = getattr(job, "status", None)
+        if status not in JobStatusChoices.ENQUEUED_STATE_CHOICES:
+            return False, is_apply_job
+        remaining = timeout - (time.monotonic() - start)
+        if remaining <= 0:
+            return False, is_apply_job
+        wait_duration = min(poll_interval, remaining)
+        if stop_event is not None:
+            if stop_event.wait(wait_duration):
+                return False, is_apply_job
+        else:
+            time.sleep(wait_duration)
+
+
+def _queued_wait_outcome(
+    status: object,
+) -> tuple[str, bool, str, str | None] | None:
+    """Describe a queued wait that did not end in the running state."""
+    if status == JobStatusChoices.STATUS_RUNNING:
+        return None
+    if status in JobStatusChoices.TERMINAL_STATE_CHOICES:
+        terminal_status = str(status)
+        return (
+            terminal_status,
+            status == JobStatusChoices.STATUS_COMPLETED,
+            f"Job finished with status {terminal_status}",
+            None,
+        )
+    queued_status = str(status or "unknown")
+    message = f"Job is still {queued_status}; waiting for a worker."
+    return "waiting", False, message, "waiting"
+
+
+def _iter_job_log_events(
+    log_entries: list[object], start_index: int
+) -> Generator[tuple[str, dict[str, object]], None, None]:
+    """Yield observable SSE events from newly persisted job log entries."""
+    for entry in log_entries[start_index:]:
+        decoded = _decode_stream_log_entry(entry)
+        if decoded is not None:
+            event_name, payload = decoded
+            if event_name != "complete":
+                yield event_name, payload
+            continue
+        message = _render_log_entry_message(entry)
+        if isinstance(message, str) and message.strip():
+            yield (
+                "message",
+                {
+                    "step": "job",
+                    "status": "progress",
+                    "message": message,
+                },
+            )
+
+
+def _job_log_entries(job: JobModel) -> list[object]:
+    """Return persisted log entries when NetBox exposes the expected list shape."""
+    log_entries = getattr(job, "log_entries", None)
+    return log_entries if isinstance(log_entries, list) else []
+
+
+def _emit_job_log_events(
+    job: JobModel,
+    start_index: int,
+    emit: Callable[[str, dict[str, object]], None],
+) -> int:
+    """Emit newly persisted job logs and return the consumed entry count."""
+    log_entries = _job_log_entries(job)
+    for event_name, payload in _iter_job_log_events(log_entries, start_index):
+        emit(event_name, payload)
+    return len(log_entries)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -235,16 +329,22 @@ class JobStreamSSEView(View):
 
             close_old_connections()
             try:
-                is_apply_job = _is_proxbox_apply_job(job)
-                if not (is_proxbox_sync_job(job) or is_apply_job):
+                is_observable_job, is_apply_job = _wait_for_observable_job(
+                    job,
+                    is_proxbox_sync_job,
+                    stop_event=stop_event,
+                )
+                if stop_event.is_set():
+                    return
+                if not is_observable_job:
                     emit_error("Not a Proxbox sync or apply job")
                     emit_complete(False, "Not a Proxbox sync or apply job")
                     return
 
-                job.refresh_from_db()
                 status = getattr(job, "status", None)
 
                 if status in JobStatusChoices.TERMINAL_STATE_CHOICES:
+                    _emit_job_log_events(job, 0, emit)
                     emit(
                         "step",
                         {
@@ -278,21 +378,19 @@ class JobStreamSSEView(View):
                     )
                     if stop_event.is_set():
                         return
-                    if status != JobStatusChoices.STATUS_RUNNING:
-                        queued_status = str(status or "unknown")
+                    queued_outcome = _queued_wait_outcome(status)
+                    if queued_outcome is not None:
+                        step_status, ok, message, complete_status = queued_outcome
+                        _emit_job_log_events(job, 0, emit)
                         emit(
                             "step",
                             {
                                 "step": "job",
-                                "status": "waiting",
-                                "message": f"Job is still {queued_status}; waiting for a worker.",
+                                "status": step_status,
+                                "message": message,
                             },
                         )
-                        emit_complete(
-                            False,
-                            f"Job is still {queued_status}; waiting for a worker.",
-                            status="waiting",
-                        )
+                        emit_complete(ok, message, status=complete_status)
                         return
 
                 sync_owner = _get_sync_ownership(job)
@@ -330,29 +428,7 @@ class JobStreamSSEView(View):
                         )
                         last_status = current_status
 
-                    log_entries = getattr(job, "log_entries", None)
-                    if isinstance(log_entries, list):
-                        new_entries = log_entries[seen_log_entries:]
-                        for entry in new_entries:
-                            decoded = _decode_stream_log_entry(entry)
-                            if decoded is not None:
-                                event_name, payload = decoded
-                                # Pass through recognized proxbox-api event names,
-                                # including intent ``plan_summary`` frames.
-                                if event_name != "complete":
-                                    emit(event_name, payload)
-                                continue
-                            msg = _render_log_entry_message(entry)
-                            if isinstance(msg, str) and msg.strip():
-                                emit(
-                                    "message",
-                                    {
-                                        "step": "job",
-                                        "status": "progress",
-                                        "message": msg,
-                                    },
-                                )
-                        seen_log_entries = len(log_entries)
+                    seen_log_entries = _emit_job_log_events(job, seen_log_entries, emit)
 
                     if current_status in JobStatusChoices.TERMINAL_STATE_CHOICES:
                         ok = current_status == JobStatusChoices.STATUS_COMPLETED

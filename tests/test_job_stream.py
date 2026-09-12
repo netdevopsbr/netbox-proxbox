@@ -104,7 +104,22 @@ def job_stream_module(monkeypatch):
         VM_INTERFACES="vm-interfaces",
         IP_ADDRESSES="ip-addresses",
     )
-    nbp_jobs.is_proxbox_sync_job = lambda job: True
+
+    def is_proxbox_sync_job(job):
+        data = getattr(job, "data", None)
+        if isinstance(data, dict) and "proxbox_sync" in data:
+            return True
+        queue_name = getattr(job, "queue_name", None) or ""
+        if queue_name == "netbox-proxbox":
+            return True
+        name = str(getattr(job, "name", None) or "").strip()
+        return name == "Proxbox Sync" and queue_name in {
+            "",
+            "default",
+            "netbox-proxbox",
+        }
+
+    nbp_jobs.is_proxbox_sync_job = is_proxbox_sync_job
     nbp_jobs.proxbox_sync_params_from_job = lambda job: {
         "sync_types": ["devices"],
         "proxmox_endpoint_ids": [],
@@ -157,6 +172,257 @@ def job_stream_module(monkeypatch):
     sys.modules["netbox_proxbox.views.job_stream"] = module
     spec.loader.exec_module(module)
     return module
+
+
+@pytest.mark.parametrize(
+    "job_data",
+    [
+        None,
+        "",
+        "not-json",
+        "null",
+        "[]",
+        "1",
+        [],
+        1,
+        {"proxbox_sync": None},
+        {"proxbox_sync": []},
+    ],
+)
+def test_sync_ownership_helpers_normalize_non_mapping_job_data(
+    job_stream_module, job_data
+):
+    """Ownership helpers must treat every non-object data shape as empty."""
+    saved_fields = []
+    job = SimpleNamespace(
+        data=job_data,
+        save=lambda **kwargs: saved_fields.append(kwargs),
+    )
+
+    assert job_stream_module._get_sync_ownership(job) is None
+    job_stream_module._release_sync_ownership(job, "rq_job")
+    assert saved_fields == []
+
+    assert job_stream_module._claim_sync_ownership(job, "observer") is True
+    assert job.data["proxbox_sync"]["sync_owner"] == "observer"
+    assert saved_fields == [{"update_fields": ["data"]}]
+
+
+def test_job_stream_survives_initial_null_data_and_reports_later_success(
+    job_stream_module,
+):
+    """A fresh job may expose null data before its persisted metadata appears."""
+    refresh_state = {"calls": 0}
+
+    def refresh() -> None:
+        refresh_state["calls"] += 1
+        if refresh_state["calls"] == 2:
+            job.data = {"proxbox_sync": {"sync_owner": "rq_job"}}
+        if refresh_state["calls"] == 3:
+            job.status = "completed"
+
+    job = SimpleNamespace(
+        pk=62,
+        name="Custom operator sync",
+        queue_name="other",
+        status="running",
+        data=None,
+        save=lambda **kwargs: None,
+        refresh_from_db=refresh,
+        log_entries=[],
+    )
+
+    chunks = list(job_stream_module.JobStreamSSEView()._stream_job_events(job))
+
+    assert refresh_state["calls"] == 3
+    assert not any("event: error" in chunk for chunk in chunks)
+    assert any(
+        "event: complete" in chunk
+        and '"ok": true' in chunk
+        and "Job finished with status completed" in chunk
+        for chunk in chunks
+    )
+
+
+def test_observable_job_classification_grace_is_bounded(job_stream_module, monkeypatch):
+    """An unrelated enqueued job must not hold a stream beyond the grace budget."""
+    monotonic_values = iter([0.0, 1.0])
+    monkeypatch.setattr(
+        job_stream_module.time, "monotonic", lambda: next(monotonic_values)
+    )
+    refresh_state = {"calls": 0}
+    job = SimpleNamespace(
+        status="running",
+        data=None,
+        refresh_from_db=lambda: refresh_state.__setitem__(
+            "calls", refresh_state["calls"] + 1
+        ),
+    )
+
+    assert job_stream_module._wait_for_observable_job(
+        job, lambda candidate: False, timeout=0.5, poll_interval=0
+    ) == (False, False)
+    assert refresh_state["calls"] == 1
+
+
+def test_observable_job_classification_grace_is_interruptible(job_stream_module):
+    """Closing a stream must interrupt metadata classification immediately."""
+    refresh_state = {"calls": 0}
+    stop_event = job_stream_module.threading.Event()
+    stop_event.set()
+    job = SimpleNamespace(
+        status="running",
+        data=None,
+        refresh_from_db=lambda: refresh_state.__setitem__(
+            "calls", refresh_state["calls"] + 1
+        ),
+    )
+
+    assert job_stream_module._wait_for_observable_job(
+        job,
+        lambda candidate: False,
+        timeout=1,
+        poll_interval=0.1,
+        stop_event=stop_event,
+    ) == (False, False)
+    assert refresh_state["calls"] == 1
+
+
+@pytest.mark.parametrize(
+    ("terminal_status", "expected_ok"),
+    [("completed", True), ("failed", False)],
+)
+def test_job_stream_replays_logs_when_classification_refresh_is_terminal(
+    job_stream_module, terminal_status, expected_ok
+):
+    """Metadata and terminal logs may appear together during classification."""
+    refresh_state = {"calls": 0}
+
+    def refresh() -> None:
+        refresh_state["calls"] += 1
+        job.data = {"proxbox_sync": {"sync_owner": "rq_job"}}
+        job.status = terminal_status
+        job.log_entries = [
+            {"message": f"classification final detail: {terminal_status}"},
+            {
+                "message": (
+                    '[proxbox-stream] item_progress: {"phase":"devices",'
+                    f'"status":"{terminal_status}"}}'
+                )
+            },
+            {
+                "message": (
+                    '[proxbox-stream] complete: {"ok":false,'
+                    '"message":"backend terminal frame"}'
+                )
+            },
+        ]
+
+    job = SimpleNamespace(
+        pk=64,
+        name="Custom operator sync",
+        queue_name="other",
+        status="scheduled",
+        data=None,
+        save=lambda **kwargs: None,
+        refresh_from_db=refresh,
+        log_entries=[],
+    )
+
+    chunks = list(job_stream_module.JobStreamSSEView()._stream_job_events(job))
+
+    assert refresh_state["calls"] == 1
+    assert sum("event: complete" in chunk for chunk in chunks) == 1
+    complete_index = next(
+        index for index, chunk in enumerate(chunks) if "event: complete" in chunk
+    )
+    assert any(
+        index < complete_index
+        and "event: message" in chunk
+        and f"classification final detail: {terminal_status}" in chunk
+        for index, chunk in enumerate(chunks)
+    )
+    assert any(
+        index < complete_index
+        and "event: item_progress" in chunk
+        and f'"status": "{terminal_status}"' in chunk
+        for index, chunk in enumerate(chunks)
+    )
+    assert any(
+        "event: complete" in chunk and f'"ok": {str(expected_ok).lower()}' in chunk
+        for chunk in chunks
+    )
+
+
+@pytest.mark.parametrize(
+    ("terminal_status", "expected_ok"),
+    [("completed", True), ("failed", False)],
+)
+def test_job_stream_reports_queued_job_that_finishes_before_running(
+    job_stream_module, terminal_status, expected_ok
+):
+    """A queued job may finish before polling observes the running state."""
+    refresh_state = {"calls": 0}
+
+    def refresh() -> None:
+        refresh_state["calls"] += 1
+        if refresh_state["calls"] == 2:
+            job.status = terminal_status
+
+    job = SimpleNamespace(
+        pk=63,
+        name="Proxbox Sync",
+        queue_name="default",
+        status="scheduled",
+        data={"proxbox_sync": {"sync_owner": "rq_job"}},
+        save=lambda **kwargs: None,
+        refresh_from_db=refresh,
+        log_entries=[
+            {"message": f"ordinary final detail: {terminal_status}"},
+            {
+                "message": (
+                    '[proxbox-stream] item_progress: {"phase":"devices",'
+                    f'"status":"{terminal_status}"}}'
+                )
+            },
+            {
+                "message": (
+                    '[proxbox-stream] complete: {"ok":false,'
+                    '"message":"backend terminal frame"}'
+                )
+            },
+        ],
+    )
+
+    chunks = list(job_stream_module.JobStreamSSEView()._stream_job_events(job))
+
+    assert refresh_state["calls"] == 2
+    assert sum("event: complete" in chunk for chunk in chunks) == 1
+    complete_index = next(
+        index for index, chunk in enumerate(chunks) if "event: complete" in chunk
+    )
+    assert any(
+        index < complete_index
+        and "event: message" in chunk
+        and f"ordinary final detail: {terminal_status}" in chunk
+        for index, chunk in enumerate(chunks)
+    )
+    assert any(
+        index < complete_index
+        and "event: item_progress" in chunk
+        and f'"status": "{terminal_status}"' in chunk
+        for index, chunk in enumerate(chunks)
+    )
+    assert not any(
+        "event: complete" in chunk and '"status": "waiting"' in chunk
+        for chunk in chunks
+    )
+    assert any(
+        "event: complete" in chunk
+        and f'"ok": {str(expected_ok).lower()}' in chunk
+        and f"Job finished with status {terminal_status}" in chunk
+        for chunk in chunks
+    )
 
 
 def test_job_stream_forwards_backend_message_frames(job_stream_module, monkeypatch):
