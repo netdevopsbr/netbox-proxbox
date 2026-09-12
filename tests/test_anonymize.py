@@ -116,6 +116,90 @@ def test_ipv6_and_mac_are_replaced(scrub):
     assert "<ipv6-1>" in out
 
 
+@pytest.mark.parametrize(
+    "rendered",
+    [
+        "aa:bb:cc:dd:ee:ff",
+        "aa-bb-cc-dd-ee-ff",
+        "AABB-CCDD-EEFF",
+        "aabb.ccdd.eeff",
+    ],
+)
+def test_mac_renderings_are_replaced(scrub, rendered):
+    assert (
+        scrub(f"interface {rendered} disconnected") == "interface <mac-1> disconnected"
+    )
+
+
+def test_same_mac_in_different_renderings_keeps_one_placeholder(scrub):
+    out = scrub("aa:bb:cc:dd:ee:ff then AABB-CCDD-EEFF then aabb.ccdd.eeff")
+    assert out == "<mac-1> then <mac-1> then <mac-1>"
+
+
+def test_uuid_is_not_mistaken_for_a_hyphenated_mac(scrub):
+    value = "b0d86846-1a2b-3c4d-5e6f-fdbbc3a634c1"
+    assert scrub(value) == value
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("MAC-AABB-CCDD-EEFF", "MAC-<mac-1>"),
+        ("mac-aa-bb-cc-dd-ee-ff", "mac-<mac-1>"),
+        ("iface-aabb-ccdd-eeff", "iface-<mac-1>"),
+    ],
+)
+def test_labelled_mac_renderings_are_replaced(scrub, value, expected):
+    assert scrub(value) == expected
+
+
+@pytest.mark.parametrize("label", ["hwaddr", "macaddr"])
+@pytest.mark.parametrize(
+    "rendered",
+    [
+        "aa:bb:cc:dd:ee:ff",
+        "aa-bb-cc-dd-ee-ff",
+        "AABB-CCDD-EEFF",
+        "aabb.ccdd.eeff",
+    ],
+)
+def test_compact_hardware_address_fields_are_replaced(scrub, label, rendered):
+    assert scrub(f"{label}:{rendered}") == f"{label}:<mac-1>"
+
+
+def test_mac_shaped_part_of_a_longer_identifier_is_preserved(scrub):
+    value = "prefix-AABB-CCDD-EEFF-suffix"
+    assert scrub(value) == value
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "aabb.ccdd.eeff.0011",
+        "00:11:22:33:44:55:66",
+        "trace.0123.4567.89ab.cdef",
+        "mac:00:11:22:33:44:55:66:77",
+    ],
+)
+def test_longer_dotted_and_colon_identifiers_are_preserved(scrub, value):
+    assert scrub(value) == value
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "aabb.ccdd.eeff.example.com",
+        "aa-bb-cc-dd-ee-ff.example.com",
+    ],
+)
+def test_mac_shaped_fqdn_is_replaced_as_one_host(scrub, value):
+    assert scrub(value) == "<host-1>"
+
+
+def test_mac_shaped_tail_of_ipv6_is_replaced_as_one_address(scrub):
+    assert scrub("2001:db8:00:11:22:33:44:55") == "<ipv6-1>"
+
+
 def test_wall_clock_timestamp_survives(scrub):
     """A timestamp is colon-separated but is not an address -- it must survive."""
     line = "[2026-07-08T12:00:00+00:00] INFO sync finished"

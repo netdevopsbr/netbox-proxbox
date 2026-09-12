@@ -498,6 +498,16 @@ payload before it is rendered. Three invariants are load-bearing:
   (`node=pve1`, `on node pve-node-01`), with a stop-word list so `node is not
   reachable` stays readable. A bare identifier in prose is still not caught --
   that is the documented best-effort limit.
+- **MAC addresses are redacted in colon, six-group hyphen, three-group hyphen,
+  and Cisco-dotted forms.** Separator differences are normalized before stable
+  placeholder assignment, so one hardware address remains correlatable across
+  vendor renderings. Complete UUIDs are consumed and preserved before their
+  interiors can match, and identifier-safe bare/labeled branches distinguish a
+  real `MAC-...` field from longer hyphen-, dot-, or colon-delimited diagnostic
+  identifiers. Compact `hwaddr:`/`macaddr:` fields and their common expanded
+  spellings are explicit labeled contexts, so the colon remains a field
+  separator rather than an identifier-continuation guess. IPv6 and FQDN rules
+  run first so a MAC-shaped substring cannot leave an address or domain tail.
 - **A bracketed IPv6 URL authority is matched atomically.** A plain
   `[^/\s:?#]+` authority stops at the literal's first colon, which published
   most of a management address and left a fragment the IPv6 pass could no

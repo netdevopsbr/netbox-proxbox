@@ -189,7 +189,51 @@ _EMAIL_RE = re.compile(
     r"(?i)\b[A-Za-z0-9._%+\-]{1,64}@[A-Za-z0-9.\-]{1,255}\.[A-Za-z]{2,24}\b"
 )
 
-_MAC_RE = re.compile(r"(?i)\b[0-9a-f]{2}(?::[0-9a-f]{2}){5}\b")
+# Proxmox, guest firmware, and vendor tools emit the same hardware address in
+# several common renderings. Keep every branch fixed-length: report text is
+# remote-controlled, so the matcher must not acquire a backtracking tail.
+_MAC_VALUE_PATTERN = (
+    r"(?:"
+    r"[0-9a-f]{2}(?::[0-9a-f]{2}){5}"
+    r"|[0-9a-f]{2}(?:-[0-9a-f]{2}){5}"
+    r"|[0-9a-f]{4}(?:[-.][0-9a-f]{4}){2}"
+    r")"
+)
+
+# A complete UUID alternative is consumed and re-emitted unchanged before the
+# engine can search its interior for a three-group MAC. Bare MACs require full
+# identifier boundaries, while explicitly labelled forms allow the separator
+# after a common hardware-address or interface label. This catches
+# ``hwaddr:aa:bb:cc:dd:ee:ff`` and ``MAC-AABB-CCDD-EEFF`` without corrupting an
+# arbitrary ``prefix-AABB-CCDD-EEFF-suffix`` identifier.
+_MAC_RE = re.compile(
+    rf"""(?ix)
+    (?P<uuid>
+        (?<![0-9a-f])
+        [0-9a-f]{{8}}(?:-[0-9a-f]{{4}}){{3}}-[0-9a-f]{{12}}
+        (?![0-9a-f])
+    )
+    |
+    (?P<label>
+        \b(?:
+            mac
+            |mac[-_\s]?addr(?:ess)?
+            |hw[-_\s]?addr(?:ess)?
+            |hardware[-_\s]+address
+            |iface
+            |interface
+        )(?:\s*[:=]\s*|[-\s]+)
+    )
+    (?P<labelled_mac>{_MAC_VALUE_PATTERN})
+    (?![0-9a-z_-]|[.:][0-9a-z])
+    |
+    (?P<bare_mac>
+        (?<![0-9a-z_.:-])
+        {_MAC_VALUE_PATTERN}
+        (?![0-9a-z_-]|[.:][0-9a-z])
+    )
+    """
+)
 
 # Every branch but the first requires a ``::``, and the first requires all
 # eight groups -- so a wall-clock timestamp (``12:00:00``) can never match.
@@ -379,10 +423,10 @@ class Anonymizer:
             lambda m: f"{self.placeholder('user', m.group(1))}@{m.group(2)}", value
         )
         value = _EMAIL_RE.sub(lambda m: self.placeholder("email", m.group(0)), value)
-        value = _MAC_RE.sub(lambda m: self.placeholder("mac", m.group(0)), value)
         value = _IPV6_RE.sub(lambda m: self.placeholder("ipv6", m.group(0)), value)
         value = _IPV4_RE.sub(lambda m: self.placeholder("ip", m.group(0)), value)
         value = _FQDN_RE.sub(self._sub_fqdn, value)
+        value = _MAC_RE.sub(self._sub_mac, value)
         # Last: by now real FQDNs are already placeholders, so this only
         # sees the single-label names the dotted rule cannot reach.
         value = _LABELLED_HOST_RE.sub(self._sub_labelled_host, value)
@@ -399,6 +443,15 @@ class Anonymizer:
         else:
             credentials = ""
         return f"{scheme}://{credentials}{token}{port or ''}"
+
+    def _sub_mac(self, match: re.Match[str]) -> str:
+        """Replace every rendering of one MAC with the same placeholder."""
+        uuid = match.group("uuid")
+        if uuid is not None:
+            return uuid
+        rendered = match.group("labelled_mac") or match.group("bare_mac")
+        canonical = re.sub(r"[:.\-]", "", rendered)
+        return f"{match.group('label') or ''}{self.placeholder('mac', canonical)}"
 
     def _sub_labelled_host(self, match: re.Match[str]) -> str:
         """Replace a single-label host named by a ``node``/``host``/... label."""
